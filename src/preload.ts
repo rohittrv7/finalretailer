@@ -19,19 +19,19 @@ ipcRenderer.on('update-notes-data', (ev, data) => {
 
 const renderer = {
 
-    minimizeWindow: () => ipcRenderer.send('window-minimize'),
-    maximizeWindow: () => ipcRenderer.send('window-maximize'),
-    closeWindow: () => ipcRenderer.send('window-close'),
-    isMaximized: () => ipcRenderer.invoke('window-is-maximized'),
-    // closeApp: () => {
-    //     ipcRenderer.send('close-app')
-    // },
-    // maximizeApp: () => {
-    //     ipcRenderer.send('maximize-app')
-    // },
-    // minimizeApp: () => {
-    //     ipcRenderer.send('minimize-app')
-    // },
+    // minimizeWindow: () => ipcRenderer.send('window-minimize'),
+    // maximizeWindow: () => ipcRenderer.send('window-maximize'),
+    // closeWindow: () => ipcRenderer.send('window-close'),
+    // isMaximized: () => ipcRenderer.invoke('window-is-maximized'),
+    closeApp: () => {
+        ipcRenderer.send('close-app')
+    },
+    maximizeApp: () => {
+        ipcRenderer.send('maximize-app')
+    },
+    minimizeApp: () => {
+        ipcRenderer.send('minimize-app')
+    },
     set_note: async (data: any, explicit = false): Promise<INoteData[]> => {
         const notes = await ipcRenderer.invoke('set-note', data)
         console.log("notes", notes);

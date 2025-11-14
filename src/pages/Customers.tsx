@@ -28,73 +28,26 @@ import {
   AttachMoney,
   Edit,
   Delete,
+  Mail,
+  Phone,
 } from "@mui/icons-material";
 import MainLayout from "../components/Layout/MainLayout";
 import axios from "axios";
+import CustomTable from "@/components/CustomTable";
+import { sampleCustomers } from "@/data/data";
+import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
+import { TableColumn } from "@/types/common";
 
 interface Customer {
-  id: string;
+  id: number;
   name: string;
   email: string;
   phone: string;
-  tier: "Gold" | "Silver" | "Bronze" | "Regular";
+  tier: "Platinum" | "Gold" | "Silver" | "Regular";
   totalSpent: string;
   visits: number;
   lastVisit: string;
 }
-
-// const customersData: Customer[] = [
-//   {
-//     id: "1",
-//     name: "Sarah Johnson",
-//     email: "sarah.j@email.com",
-//     phone: "+1 234 567 8901",
-//     tier: "Gold",
-//     totalSpent: "$2,450",
-//     visits: 45,
-//     lastVisit: "Today",
-//   },
-//   {
-//     id: "2",
-//     name: "Mike Chen",
-//     email: "mike.chen@email.com",
-//     phone: "+1 234 567 8902",
-//     tier: "Silver",
-//     totalSpent: "$1,230",
-//     visits: 28,
-//     lastVisit: "2 days ago",
-//   },
-//   {
-//     id: "3",
-//     name: "Emma Davis",
-//     email: "emma.d@email.com",
-//     phone: "+1 234 567 8903",
-//     tier: "Gold",
-//     totalSpent: "$3,150",
-//     visits: 62,
-//     lastVisit: "Yesterday",
-//   },
-//   {
-//     id: "4",
-//     name: "James Wilson",
-//     email: "j.wilson@email.com",
-//     phone: "+1 234 567 8904",
-//     tier: "Bronze",
-//     totalSpent: "$540",
-//     visits: 12,
-//     lastVisit: "1 week ago",
-//   },
-//   {
-//     id: "5",
-//     name: "Lisa Anderson",
-//     email: "lisa.a@email.com",
-//     phone: "+1 234 567 8905",
-//     tier: "Regular",
-//     totalSpent: "$185",
-//     visits: 5,
-//     lastVisit: "2 weeks ago",
-//   },
-// ];
 
 const statsCards = [
   {
@@ -140,6 +93,107 @@ export default function Customers() {
         };
     }
   };
+
+  const columns: TableColumn<Customer>[] = [
+    {
+      id: "customer",
+      header: "Customer",
+      accessor: "name",
+      cell: (value: string, row: Customer) => (
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold">
+            {value
+              .split(" ")
+              .map((n) => n[0])
+              .join("")}
+          </div>
+          <span className="font-semibold text-gray-900">{value}</span>
+        </div>
+      ),
+    },
+    {
+      id: "contact",
+      header: "Contact",
+      accessor: "email",
+      cell: (value: string, row: Customer) => (
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 text-gray-700">
+            <Mail className="h-3.5 w-3.5 text-gray-400" />
+            <span className="text-sm">{value}</span>
+          </div>
+          <div className="flex items-center gap-2 text-gray-500">
+            <Phone className="h-3.5 w-3.5 text-gray-400" />
+            <span className="text-xs">{row.phone}</span>
+          </div>
+        </div>
+      ),
+      sortable: false,
+    },
+    {
+      id: "tier",
+      header: "Tier",
+      accessor: "tier",
+      cell: (value: Customer["tier"]) => {
+        const colors = getTierColor(value);
+        return (
+          <span
+            className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${colors.bg} ${colors.text} border ${colors.border}`}
+          >
+            {value}
+          </span>
+        );
+      },
+    },
+    {
+      id: "totalSpent",
+      header: "Total Spent",
+      accessor: "totalSpent",
+      cell: (value: string) => (
+        <span className="font-bold text-green-600">{value}</span>
+      ),
+    },
+    {
+      id: "visits",
+      header: "Visits",
+      accessor: "visits",
+      cell: (value: number) => (
+        <span className="font-semibold text-gray-700">{value}</span>
+      ),
+    },
+    {
+      id: "lastVisit",
+      header: "Last Visit",
+      accessor: "lastVisit",
+      cell: (value: string) => <span className="text-gray-600">{value}</span>,
+    },
+    {
+      id: "actions",
+      header: "Actions",
+      sortable: false,
+      cell: (_: any, row: Customer) => (
+        <div className="flex items-center gap-2">
+          <button
+            className="p-2 hover:bg-blue-100 rounded-lg transition-colors text-blue-600"
+            onClick={(e) => {
+              e.stopPropagation();
+              alert(`Edit ${row.name}`);
+            }}
+          >
+            <Edit className="h-4 w-4" />
+          </button>
+          <button
+            className="p-2 hover:bg-red-100 rounded-lg transition-colors text-red-600"
+            onClick={(e) => {
+              e.stopPropagation();
+              alert(`Delete ${row.name}`);
+            }}
+          >
+            <DeleteOutlineRoundedIcon className="h-4 w-4" />
+          </button>
+        </div>
+      ),
+    },
+  ];
 
   useEffect(() => {
     axios
@@ -206,7 +260,7 @@ export default function Customers() {
         </Box>
 
         {/* Stats */}
-        <Grid container spacing={3} sx={{ mb: 4 }} >
+        <Grid container spacing={3} sx={{ mb: 4 }}>
           {statsCards.map((stat) => {
             const Icon = stat.icon;
             return (
@@ -271,8 +325,14 @@ export default function Customers() {
                 sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1 } }}
               />
             </Box>
+            <CustomTable<Customer>
+              data={sampleCustomers}
+              columns={columns}
+              sortable={true}
+              onRowClick={(row) => console.log("Row clicked:", row)}
+            />
 
-            <TableContainer>
+            {/* <TableContainer>
               <Table>
                 <TableHead>
                   <TableRow>
@@ -391,7 +451,7 @@ export default function Customers() {
                   })}
                 </TableBody>
               </Table>
-            </TableContainer>
+            </TableContainer> */}
           </CardContent>
         </Card>
       </Box>

@@ -17,34 +17,147 @@ import {
   AccountBalanceWallet,
   Receipt,
   Add,
+  Mail,
+  Phone,
+  Edit,
 } from "@mui/icons-material";
 import MainLayout from "../components/Layout/MainLayout";
 import CatalogModal from "../components/POS/CatalogModal";
-import CustomTable, { TableColumn } from "@/components/Table";
+import { TableColumn } from "@/types/common";
+import { getTierColor, sampleCustomers } from "@/data/data";
+import DeleteOutlineRoundedIcon from '@mui/icons-material/DeleteOutlineRounded';
 
-interface CartItem {
-  id: string;
+// interface CartItem {
+//   id: string;
+//   name: string;
+//   qty: number | string;
+//   price: string;
+//   total: string;
+// }
+
+interface Customer {
+  id: number;
   name: string;
-  qty: number | string;
-  price: string;
-  total: string;
+  email: string;
+  phone: string;
+  tier: "Platinum" | "Gold" | "Silver" | "Regular";
+  totalSpent: string;
+  visits: number;
+  lastVisit: string;
 }
 
 export default function POSBilling() {
   const [showCatalog, setShowCatalog] = useState(false);
-  const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(10);
-  const cartItems: CartItem[] = [
-    { id: '1', name: "Bread Loaf", qty: 2, price: "$2.50", total: "$5.00" },
-    { id: '1', name: "Eggs (12)", qty: 1, price: "$3.20", total: "$3.20" },
-    { id: '1', name: "Bananas", qty: "1.2kg", price: "$1.80/kg", total: "$2.16" },
-  ];
+  // const [page, setPage] = useState(1);
+  // const [perPage, setPerPage] = useState(10);
+  // const cartItems: CartItem[] = [
+  //   { id: "1", name: "Bread Loaf", qty: 2, price: "$2.50", total: "$5.00" },
+  //   { id: "1", name: "Eggs (12)", qty: 1, price: "$3.20", total: "$3.20" },
+  //   {
+  //     id: "1",
+  //     name: "Bananas",
+  //     qty: "1.2kg",
+  //     price: "$1.80/kg",
+  //     total: "$2.16",
+  //   },
+  // ];
 
-  const columns: TableColumn<CartItem>[] = [
-    { id: "name", header: "Product", accessor: "name", sortable: true },
-    { id: "sku", header: "SKU", accessor: "qty" },
-    { id: "category", header: "Category", accessor: "price" },
-    { id: "stock", header: "Stock", accessor: "total" },
+ const columns: TableColumn<Customer>[] = [
+    {
+      id: 'customer',
+      header: 'Customer',
+      accessor: 'name',
+      cell: (value: string, row: Customer) => (
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold">
+            {value.split(' ').map(n => n[0]).join('')}
+          </div>
+          <span className="font-semibold text-gray-900">{value}</span>
+        </div>
+      ),
+    },
+    {
+      id: 'contact',
+      header: 'Contact',
+      accessor: 'email',
+      cell: (value: string, row: Customer) => (
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 text-gray-700">
+            <Mail className="h-3.5 w-3.5 text-gray-400" />
+            <span className="text-sm">{value}</span>
+          </div>
+          <div className="flex items-center gap-2 text-gray-500">
+            <Phone className="h-3.5 w-3.5 text-gray-400" />
+            <span className="text-xs">{row.phone}</span>
+          </div>
+        </div>
+      ),
+      sortable: false,
+    },
+    {
+      id: 'tier',
+      header: 'Tier',
+      accessor: 'tier',
+      cell: (value: Customer['tier']) => {
+        const colors = getTierColor(value);
+        return (
+          <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${colors.bg} ${colors.text} border ${colors.border}`}>
+            {value}
+          </span>
+        );
+      },
+    },
+    {
+      id: 'totalSpent',
+      header: 'Total Spent',
+      accessor: 'totalSpent',
+      cell: (value: string) => (
+        <span className="font-bold text-green-600">{value}</span>
+      ),
+    },
+    {
+      id: 'visits',
+      header: 'Visits',
+      accessor: 'visits',
+      cell: (value: number) => (
+        <span className="font-semibold text-gray-700">{value}</span>
+      ),
+    },
+    {
+      id: 'lastVisit',
+      header: 'Last Visit',
+      accessor: 'lastVisit',
+      cell: (value: string) => (
+        <span className="text-gray-600">{value}</span>
+      ),
+    },
+    {
+      id: 'actions',
+      header: 'Actions',
+      sortable: false,
+      cell: (_: any, row: Customer) => (
+        <div className="flex items-center gap-2">
+          <button 
+            className="p-2 hover:bg-blue-100 rounded-lg transition-colors text-blue-600"
+            onClick={(e) => {
+              e.stopPropagation();
+              alert(`Edit ${row.name}`);
+            }}
+          >
+            <Edit className="h-4 w-4" />
+          </button>
+          <button 
+            className="p-2 hover:bg-red-100 rounded-lg transition-colors text-red-600"
+            onClick={(e) => {
+              e.stopPropagation();
+              alert(`Delete ${row.name}`);
+            }}
+          >
+            <DeleteOutlineRoundedIcon className="h-4 w-4" />
+          </button>
+        </div>
+      ),
+    },
   ];
 
   const products = [
@@ -229,100 +342,12 @@ export default function POSBilling() {
 
                 {/* <hr /> */}
 
-                <CustomTable
-                  data={cartItems}
+                <CustomTable<Customer>
+                  data={sampleCustomers}
                   columns={columns}
-                  className="min-w-full overflow-clip rounded-xl border border-gray-500 text-sm"
-                  keyExtractor={(row: CartItem) => row.id}
-                  // isLoading={isLoading || isFetching}
-                  emptyState={
-                    <div className="flex flex-col items-center justify-center py-12">
-                      <div className="mb-4 rounded-full bg-gray-100 p-3">
-                        <Search className="h-6 w-6 text-gray-400" />
-                      </div>
-                      <h3 className="mb-1 text-lg font-medium text-gray-900">
-                        Add Item for Billing
-                      </h3>
-                    </div>
-                  }
-                  pagination={{
-                    currentPage: page,
-                    pageSize: perPage,
-                    totalItems: 0,
-                    onPageChange: setPage,
-                    onPerPageChange: (newPerPage) => {
-                      setPerPage(newPerPage);
-                    },
-                  }}
-                  highlightColumns={["clientName", "primaryEmail"]}
-                  // searchedTerm={debouncedSearchTerm}
+                  sortable={true}
+                  onRowClick={(row) => console.log("Row clicked:", row)}
                 />
-
-                {/* <TableContainer>
-                  <Table>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell
-                          sx={{
-                            color: "hsl(var(--primary))",
-                            fontWeight: 600,
-                            fontSize: 13,
-                          }}
-                        >
-                          Item
-                        </TableCell>
-                        <TableCell
-                          sx={{
-                            color: "hsl(var(--primary))",
-                            fontWeight: 600,
-                            fontSize: 13,
-                          }}
-                        >
-                          Qty
-                        </TableCell>
-                        <TableCell
-                          sx={{
-                            color: "hsl(var(--primary))",
-                            fontWeight: 600,
-                            fontSize: 13,
-                          }}
-                        >
-                          Price
-                        </TableCell>
-                        <TableCell
-                          sx={{
-                            color: "hsl(var(--primary))",
-                            fontWeight: 600,
-                            fontSize: 13,
-                          }}
-                        >
-                          Total
-                        </TableCell>
-                        <TableCell></TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {cartItems.length !== 0
-                        ? "Add Item for Billing"
-                        : cartItems.map((item, index) => (
-                            <TableRow key={index}>
-                              <TableCell>{item.name}</TableCell>
-                              <TableCell>{item.qty}</TableCell>
-                              <TableCell>{item.price}</TableCell>
-                              <TableCell sx={{ fontWeight: 600 }}>
-                                {item.total}
-                              </TableCell>
-                              <TableCell>
-                                <IconButton size="small">
-                                  <Close fontSize="small" />
-                                </IconButton>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer> */}
-
                 <Box sx={{ pt: 2, borderTop: "1px solid hsl(var(--border))" }}>
                   <TextField
                     fullWidth
