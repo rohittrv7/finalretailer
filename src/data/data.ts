@@ -1,11 +1,5 @@
 import { TierColors } from "@/types/common";
-import {
-  Assessment,
-  Inventory2,
-  LocalShipping,
-  People,
-  Receipt,
-} from "@mui/icons-material";
+import { Asterisk, Box, PersonStanding, Receipt, ShoppingBag } from "lucide-react";
 
 export const quickActions = [
   {
@@ -17,25 +11,25 @@ export const quickActions = [
   {
     title: "Inventory",
     description: "Track stock, batches, expiry, and reorders.",
-    icon: Inventory2,
+    icon: Box,
     path: "/inventory",
   },
   {
     title: "Customers",
     description: "Directory with purchase history and loyalty tiers.",
-    icon: People,
+    icon: PersonStanding,
     path: "/customers",
   },
   {
     title: "Suppliers",
     description: "Manage vendors, POs, and payments.",
-    icon: LocalShipping,
+    icon: ShoppingBag,
     path: "/suppliers",
   },
   {
     title: "Reports",
     description: "Daily sales, stock summary, P&L and exports.",
-    icon: Assessment,
+    icon: Asterisk,
     path: "/reports",
   },
 ];

@@ -1,311 +1,322 @@
-import {
-  Box,
-  Grid,
-  Card,
-  CardContent,
-  Typography,
-  TextField,
-  Button,
-  Switch,
-  FormControlLabel,
-  Divider,
-  Avatar,
-} from '@mui/material';
+import { useState } from "react";
 import {
   Store,
-  Notifications,
-  Security,
   Receipt,
-  Palette,
-  Language,
+  Bell,
+  Shield,
   Save,
   Edit,
-} from '@mui/icons-material';
-import MainLayout from '../components/Layout/MainLayout';
+  Globe,
+  Palette,
+  DollarSign,
+  Check,
+  X,
+} from "lucide-react";
+import MainLayout from "@/components/Layout/MainLayout";
 
 const settingsSections = [
   {
     icon: Store,
-    title: 'Store Profile',
-    description: 'Manage your store information and branding',
+    title: "Store Profile",
+    description: "Manage your store information and branding",
+    color: "blue",
   },
   {
     icon: Receipt,
-    title: 'Taxes & Billing',
-    description: 'Configure tax rates and invoice settings',
+    title: "Taxes & Billing",
+    description: "Configure tax rates and invoice settings",
+    color: "green",
   },
   {
-    icon: Notifications,
-    title: 'Notifications',
-    description: 'Control email and system notifications',
+    icon: Bell,
+    title: "Notifications",
+    description: "Control email and system notifications",
+    color: "purple",
   },
   {
-    icon: Security,
-    title: 'Security & Users',
-    description: 'Roles, permissions, and access control',
+    icon: Shield,
+    title: "Security & Users",
+    description: "Roles, permissions, and access control",
+    color: "red",
   },
 ];
 
 export default function Settings() {
+  const [storeName, setStoreName] = useState("RetailPro Mart");
+  const [email, setEmail] = useState("contact@retailpro.com");
+  const [phone, setPhone] = useState("+1 234 567 8900");
+  const [taxId, setTaxId] = useState("TAX-123456789");
+  const [address, setAddress] = useState("123 Market St, Springfield");
+  const [lowStock, setLowStock] = useState(true);
+  const [dailyReport, setDailyReport] = useState(true);
+  const [loyalty, setLoyalty] = useState(false);
+  const [autoPO, setAutoPO] = useState(true);
+  const [stockAlert, setStockAlert] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const handleSave = () => {
+    setSaving(true);
+    setTimeout(() => {
+      setSaving(false);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    }, 1500);
+  };
+
   return (
     <MainLayout>
-      <Box sx={{ p: 4 }}>
-        {/* Header */}
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="h4" sx={{ fontWeight: 700, color: 'hsl(var(--foreground))' }}>
-            Settings
-          </Typography>
-          <Typography variant="body2" sx={{ color: 'hsl(var(--muted-foreground))', mt: 1 }}>
-            Manage your store settings and preferences
-          </Typography>
-        </Box>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-blue-950 dark:to-indigo-950 p-6">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="mb-8">
+            <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-2">
+              Settings
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400">
+              Manage your store settings and preferences
+            </p>
+          </div>
 
-        <Grid container spacing={3}>
-          {/* Quick Settings Cards */}
-          <Grid xs={12} md={8}>
-            <Grid container spacing={2} sx={{ mb: 3 }}>
-              {settingsSections.map((section) => {
-                const Icon = section.icon;
-                return (
-                  <Grid key={section.title} xs={12} sm={6}>
-                    <Card
-                      sx={{
-                        bgcolor: 'hsl(var(--card))',
-                        borderRadius: 1,
-                        boxShadow: 'var(--shadow-sm)',
-                        cursor: 'pointer',
-                        transition: 'var(--transition-smooth)',
-                        '&:hover': {
-                          boxShadow: 'var(--shadow-md)',
-                          transform: 'translateY(-2px)',
-                        },
-                      }}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Main Settings */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Quick Settings */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {settingsSections.map((section, i) => {
+                  const Icon = section.icon;
+                  const colors = {
+                    blue: "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400",
+                    green:
+                      "bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400",
+                    purple:
+                      "bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400",
+                    red: "bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400",
+                  };
+                  return (
+                    <div
+                      key={i}
+                      className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-white/20 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 cursor-pointer"
                     >
-                      <CardContent sx={{ p: 3 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'start', gap: 2 }}>
-                          <Box
-                            sx={{
-                              p: 1.5,
-                              bgcolor: 'hsl(var(--primary-light))',
-                              borderRadius: 2,
-                              display: 'flex',
-                            }}
-                          >
-                            <Icon sx={{ color: 'hsl(var(--primary))', fontSize: 24 }} />
-                          </Box>
-                          <Box sx={{ flex: 1 }}>
-                            <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 0.5 }}>
-                              {section.title}
-                            </Typography>
-                            <Typography variant="caption" sx={{ color: 'hsl(var(--muted-foreground))' }}>
-                              {section.description}
-                            </Typography>
-                          </Box>
-                        </Box>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                );
-              })}
-            </Grid>
+                      <div className="flex items-start gap-4">
+                        <div
+                          className={`p-3 rounded-xl ${
+                            colors[section.color as keyof typeof colors]
+                          }`}
+                        >
+                          <Icon className="w-6 h-6" />
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="font-bold text-gray-900 dark:text-white">
+                            {section.title}
+                          </h3>
+                          <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                            {section.description}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
 
-            {/* Store Information */}
-            <Card sx={{ bgcolor: 'hsl(var(--card))', borderRadius: 1, boxShadow: 'var(--shadow-md)', mb: 3 }}>
-              <CardContent sx={{ p: 3 }}>
-                <Typography variant="h6" sx={{ fontWeight: 700, mb: 3, color: 'hsl(var(--foreground))' }}>
+              {/* Store Information */}
+              <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-white/20">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-5">
                   Store Information
-                </Typography>
-                <Grid container spacing={2.5}>
-                  <Grid xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      label="Store Name"
-                      defaultValue="RetailPro Mart"
-                      sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-                    />
-                  </Grid>
-                  <Grid xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      label="Contact Email"
-                      defaultValue="contact@retailpro.com"
-                      sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-                    />
-                  </Grid>
-                  <Grid xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      label="Phone Number"
-                      defaultValue="+1 234 567 8900"
-                      sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-                    />
-                  </Grid>
-                  <Grid xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      label="Tax ID"
-                      defaultValue="TAX-123456789"
-                      sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-                    />
-                  </Grid>
-                  <Grid xs={12}>
-                    <TextField
-                      fullWidth
-                      label="Address"
-                      defaultValue="123 Market St, Springfield"
-                      multiline
-                      rows={2}
-                      sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
-                    />
-                  </Grid>
-                </Grid>
-              </CardContent>
-            </Card>
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <input
+                    type="text"
+                    value={storeName}
+                    onChange={(e) => setStoreName(e.target.value)}
+                    placeholder="Store Name"
+                    className="px-4 py-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Contact Email"
+                    className="px-4 py-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  />
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="Phone Number"
+                    className="px-4 py-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  />
+                  <input
+                    type="text"
+                    value={taxId}
+                    onChange={(e) => setTaxId(e.target.value)}
+                    placeholder="Tax ID"
+                    className="px-4 py-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  />
+                  <textarea
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    placeholder="Address"
+                    rows={2}
+                    className="col-span-full px-4 py-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all resize-none"
+                  />
+                </div>
+              </div>
 
-            {/* Preferences */}
-            <Card sx={{ bgcolor: 'hsl(var(--card))', borderRadius: 1, boxShadow: 'var(--shadow-md)' }}>
-              <CardContent sx={{ p: 3 }}>
-                <Typography variant="h6" sx={{ fontWeight: 700, mb: 3, color: 'hsl(var(--foreground))' }}>
+              {/* Preferences */}
+              <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-white/20">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-5">
                   Preferences
-                </Typography>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <FormControlLabel
-                    control={<Switch defaultChecked />}
-                    label="Email notifications for low stock"
-                  />
-                  <Divider />
-                  <FormControlLabel
-                    control={<Switch defaultChecked />}
-                    label="Send daily sales reports"
-                  />
-                  <Divider />
-                  <FormControlLabel
-                    control={<Switch />}
-                    label="Enable customer loyalty program"
-                  />
-                  <Divider />
-                  <FormControlLabel
-                    control={<Switch defaultChecked />}
-                    label="Auto-generate purchase orders"
-                  />
-                  <Divider />
-                  <FormControlLabel
-                    control={<Switch defaultChecked />}
-                    label="Show stock alerts on dashboard"
-                  />
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
+                </h3>
+                <div className="space-y-4">
+                  {[
+                    {
+                      label: "Email notifications for low stock",
+                      state: lowStock,
+                      setState: setLowStock,
+                    },
+                    {
+                      label: "Send daily sales reports",
+                      state: dailyReport,
+                      setState: setDailyReport,
+                    },
+                    {
+                      label: "Enable customer loyalty program",
+                      state: loyalty,
+                      setState: setLoyalty,
+                    },
+                    {
+                      label: "Auto-generate purchase orders",
+                      state: autoPO,
+                      setState: setAutoPO,
+                    },
+                    {
+                      label: "Show stock alerts on dashboard",
+                      state: stockAlert,
+                      setState: setStockAlert,
+                    },
+                  ].map((item, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-700 rounded-xl"
+                    >
+                      <p className="font-medium text-gray-900 dark:text-white">
+                        {item.label}
+                      </p>
+                      <button
+                        onClick={() => item.setState(!item.state)}
+                        className={`relative w-12 h-6 rounded-full transition-all ${
+                          item.state
+                            ? "bg-blue-600"
+                            : "bg-gray-300 dark:bg-slate-600"
+                        }`}
+                      >
+                        <span
+                          className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
+                            item.state ? "translate-x-6" : ""
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
 
-          {/* Profile & Actions */}
-          <Grid xs={12} md={4}>
-            <Card sx={{ bgcolor: 'hsl(var(--card))', borderRadius: 1, boxShadow: 'var(--shadow-md)', mb: 3 }}>
-              <CardContent sx={{ p: 3 }}>
-                <Typography variant="h6" sx={{ fontWeight: 700, mb: 3, color: 'hsl(var(--foreground))' }}>
+            {/* Sidebar */}
+            <div className="space-y-6">
+              {/* User Profile */}
+              <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-white/20">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-5">
                   Your Profile
-                </Typography>
-                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-                  <Avatar
-                    sx={{
-                      width: 80,
-                      height: 80,
-                      bgcolor: 'hsl(var(--primary))',
-                      fontSize: 32,
-                      fontWeight: 700,
-                    }}
-                  >
+                </h3>
+                <div className="flex flex-col items-center text-center">
+                  <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white text-2xl font-bold shadow-lg">
                     AC
-                  </Avatar>
-                  <Box sx={{ textAlign: 'center' }}>
-                    <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                  </div>
+                  <div className="mt-4">
+                    <h4 className="font-bold text-gray-900 dark:text-white">
                       Alex Carter
-                    </Typography>
-                    <Typography variant="body2" sx={{ color: 'hsl(var(--muted-foreground))' }}>
+                    </h4>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
                       Store Manager
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: 'hsl(var(--muted-foreground))' }}>
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
                       alex@retailpro.app
-                    </Typography>
-                  </Box>
-                  <Button
-                    fullWidth
-                    variant="outlined"
-                    startIcon={<Edit />}
-                    sx={{
-                      borderColor: 'hsl(var(--border))',
-                      color: 'hsl(var(--foreground))',
-                      textTransform: 'none',
-                      fontWeight: 600,
-                      borderRadius: 2,
-                    }}
-                  >
-                    Edit Profile
-                  </Button>
-                </Box>
-              </CardContent>
-            </Card>
+                    </p>
+                  </div>
+                  <button className="mt-5 w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 dark:border-slate-600 rounded-xl text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-100 dark:hover:bg-slate-700 transition-all">
+                    <Edit className="w-4 h-4" /> Edit Profile
+                  </button>
+                </div>
+              </div>
 
-            <Card sx={{ bgcolor: 'hsl(var(--card))', borderRadius: 1, boxShadow: 'var(--shadow-md)', mb: 3 }}>
-              <CardContent sx={{ p: 3 }}>
-                <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: 'hsl(var(--foreground))' }}>
+              {/* System Settings */}
+              <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-white/20">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-5">
                   System Settings
-                </Typography>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <Language sx={{ color: 'hsl(var(--primary))' }} />
-                    <Box sx={{ flex: 1 }}>
-                      <Typography variant="body2" sx={{ fontWeight: 600 }}>Language</Typography>
-                      <Typography variant="caption" sx={{ color: 'hsl(var(--muted-foreground))' }}>
-                        English (US)
-                      </Typography>
-                    </Box>
-                  </Box>
-                  <Divider />
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <Palette sx={{ color: 'hsl(var(--primary))' }} />
-                    <Box sx={{ flex: 1 }}>
-                      <Typography variant="body2" sx={{ fontWeight: 600 }}>Theme</Typography>
-                      <Typography variant="caption" sx={{ color: 'hsl(var(--muted-foreground))' }}>
-                        Light Mode
-                      </Typography>
-                    </Box>
-                  </Box>
-                  <Divider />
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <Receipt sx={{ color: 'hsl(var(--primary))' }} />
-                    <Box sx={{ flex: 1 }}>
-                      <Typography variant="body2" sx={{ fontWeight: 600 }}>Currency</Typography>
-                      <Typography variant="caption" sx={{ color: 'hsl(var(--muted-foreground))' }}>
-                        USD ($)
-                      </Typography>
-                    </Box>
-                  </Box>
-                </Box>
-              </CardContent>
-            </Card>
+                </h3>
+                <div className="space-y-4">
+                  {[
+                    { icon: Globe, label: "Language", value: "English (US)" },
+                    { icon: Palette, label: "Theme", value: "Light Mode" },
+                    { icon: DollarSign, label: "Currency", value: "USD ($)" },
+                  ].map((item, i) => {
+                    const Icon = item.icon;
+                    return (
+                      <div
+                        key={i}
+                        className="flex items-center gap-4 p-3 bg-gray-50 dark:bg-slate-700 rounded-xl"
+                      >
+                        <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                          <Icon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-semibold text-gray-900 dark:text-white">
+                            {item.label}
+                          </p>
+                          <p className="text-xs text-gray-600 dark:text-gray-400">
+                            {item.value}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
 
-            <Button
-              fullWidth
-              variant="contained"
-              startIcon={<Save />}
-              sx={{
-                bgcolor: 'hsl(var(--primary))',
-                color: 'hsl(var(--primary-foreground))',
-                py: 1.75,
-                borderRadius: 2,
-                textTransform: 'none',
-                fontWeight: 700,
-                fontSize: 16,
-                boxShadow: 'var(--shadow-primary)',
-                '&:hover': { bgcolor: 'hsl(var(--primary-hover))' },
-              }}
-            >
-              Save Changes
-            </Button>
-          </Grid>
-        </Grid>
-      </Box>
+              {/* Save Button */}
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className={`w-full flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-bold text-white shadow-lg transform transition-all duration-300 ${
+                  saving
+                    ? "bg-gray-400 cursor-not-allowed"
+                    : saved
+                    ? "bg-green-600 hover:bg-green-700"
+                    : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 hover:scale-105 hover:shadow-xl"
+                }`}
+              >
+                {saving ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Saving...
+                  </>
+                ) : saved ? (
+                  <>
+                    <Check className="w-5 h-5" /> Saved!
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-5 h-5" /> Save Changes
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </MainLayout>
   );
 }

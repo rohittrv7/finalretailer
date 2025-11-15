@@ -1,102 +1,82 @@
-import { useState } from "react";
+"use client";
+
+import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
-  Box,
-  Drawer,
-  List,
-  ListItem,
-  ListItemButton,
-  ListItemIcon,
-  ListItemText,
-  Avatar,
-  Typography,
-  Collapse,
-} from "@mui/material";
-import {
-  Dashboard,
-  PointOfSale,
-  Inventory,
-  People,
-  LocalShipping,
+  LayoutDashboard,
+  Package,
+  Users,
+  Truck,
   Settings,
-  AttachMoney,
-  Support,
+  DollarSign,
+  Headphones,
   ShoppingBag,
-  ExpandLess,
-  ExpandMore,
-  Add as AddIcon,
-  List as ListIcon,
-} from "@mui/icons-material";
+  ChevronDown,
+  ChevronUp,
+  Plus,
+  List,
+  PointerOff,
+} from "lucide-react";
 import ThemeToggle from "../ThemeToggle";
 
 const drawerWidth = 240;
 
 const menuItems = [
-  { icon: Dashboard, label: "Dashboard", path: "/" },
-  { icon: PointOfSale, label: "Billing (POS)", path: "/pos" },
+  { icon: LayoutDashboard, label: "Dashboard", path: "/" },
+  { icon: PointerOff, label: "Billing (POS)", path: "/pos" },
   {
-    icon: Inventory,
+    icon: Package,
     label: "Inventory",
     path: "/inventory",
     children: [
-      { icon: AddIcon, label: "Add Inventory", path: "/inventory/add" },
-      { icon: ListIcon, label: "Listing", path: "/inventory" },
+      { icon: Plus, label: "Add Inventory", path: "/inventory/add" },
+      { icon: List, label: "Listing", path: "/inventory" },
     ],
   },
-  { icon: People, label: "Customers", path: "/customers" },
-  { icon: LocalShipping, label: "Suppliers", path: "/suppliers" },
-  // { icon: Assessment, label: "Reports", path: "/reports" },
+  { icon: Users, label: "Customers", path: "/customers" },
+  { icon: Truck, label: "Suppliers", path: "/suppliers" },
   { icon: Settings, label: "Settings", path: "/settings" },
-  { icon: AttachMoney, label: "Pricing", path: "/pricing" },
-  { icon: Support, label: "Contact/Support", path: "/support" },
+  { icon: DollarSign, label: "Pricing", path: "/pricing" },
+  { icon: Headphones, label: "Contact/Support", path: "/support" },
 ];
 
 export default function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
-  // const [searchQuery, setSearchQuery] = useState("");
   const [inventoryOpen, setInventoryOpen] = useState(
     location.pathname.startsWith("/inventory")
   );
 
   return (
-    <Drawer
-      variant="permanent"
-      sx={{
-        width: drawerWidth,
-        flexShrink: 0,
-        "& .MuiDrawer-paper": {
-          width: drawerWidth,
-          boxSizing: "border-box",
-          bgcolor: "hsl(var(--sidebar-background))",
-          borderRight: "1px solid hsl(var(--sidebar-border))",
-        },
-      }}
-    >
-      <Box sx={{ p: 2 }}>
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <ShoppingBag sx={{ color: "hsl(var(--primary))", fontSize: 32 }} />
-          <Typography
-            variant="h6"
-            sx={{ fontWeight: 700, color: "hsl(var(--foreground))" }}
-          >
-            RetailPro
-          </Typography>
-        </Box>
-      </Box>
+    <>
+      <div
+        className="fixed left-0 top-0 h-full w-60 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-r border-gray-200 dark:border-slate-700 shadow-xl z-50"
+        style={{ width: drawerWidth }}
+      >
+        {/* Logo */}
+        <div className="p-4">
+          <div className="flex items-center gap-2">
+            <div className="p-2 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl shadow-lg">
+              <ShoppingBag className="w-6 h-6 text-white" />
+            </div>
+            <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+              RetailPro
+            </h1>
+          </div>
+        </div>
 
-      <List sx={{ px: 1.5, flex: 1 }}>
-        {menuItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = item.children
-            ? location.pathname.startsWith("/inventory")
-            : location.pathname === item.path;
-          const hasChildren = item.children && item.children.length > 0;
+        {/* Menu */}
+        <nav className="px-3 flex-1 overflow-y-auto">
+          {menuItems.map((item) => {
+            const Icon = item.icon;
+            const hasChildren = item.children && item.children.length > 0;
+            const isActive = hasChildren
+              ? location.pathname.startsWith("/inventory")
+              : location.pathname === item.path;
 
-          return (
-            <Box key={item.path}>
-              <ListItem disablePadding sx={{ mb: 0.5 }}>
-                <ListItemButton
+            return (
+              <div key={item.path}>
+                <button
                   onClick={() => {
                     if (hasChildren) {
                       setInventoryOpen(!inventoryOpen);
@@ -104,132 +84,95 @@ export default function Sidebar() {
                       navigate(item.path);
                     }
                   }}
-                  sx={{
-                    borderRadius: 2,
-                    py: 1.25,
-                    bgcolor: isActive
-                      ? "hsl(var(--sidebar-accent))"
-                      : "transparent",
-                    color: isActive
-                      ? "hsl(var(--sidebar-accent-foreground))"
-                      : "hsl(var(--sidebar-foreground))",
-                    "&:hover": {
-                      bgcolor: isActive
-                        ? "hsl(var(--sidebar-accent))"
-                        : "hsl(var(--muted))",
-                    },
-                  }}
+                  className={`w-full flex items-center justify-between gap-3 px-3 py-3 rounded-xl transition-all duration-200 mb-1 ${
+                    isActive
+                      ? "bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 shadow-md"
+                      : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700"
+                  }`}
                 >
-                  <ListItemIcon sx={{ minWidth: 40 }}>
-                    <Icon sx={{ color: "inherit", fontSize: 22 }} />
-                  </ListItemIcon>
-                  <ListItemText
-                    primary={item.label}
-                    primaryTypographyProps={{
-                      fontSize: 14,
-                      fontWeight: isActive ? 600 : 500,
-                    }}
-                  />
+                  <div className="flex items-center gap-3">
+                    <Icon
+                      className={`w-5 h-5 ${
+                        isActive ? "text-blue-700 dark:text-blue-300" : ""
+                      }`}
+                    />
+                    <span
+                      className={`text-sm font-medium ${
+                        isActive ? "font-semibold" : ""
+                      }`}
+                    >
+                      {item.label}
+                    </span>
+                  </div>
                   {hasChildren &&
-                    (inventoryOpen ? <ExpandLess /> : <ExpandMore />)}
-                </ListItemButton>
-              </ListItem>
+                    (inventoryOpen ? (
+                      <ChevronUp className="w-4 h-4" />
+                    ) : (
+                      <ChevronDown className="w-4 h-4" />
+                    ))}
+                </button>
 
-              {/* Children items */}
-              {hasChildren && (
-                <Collapse in={inventoryOpen} timeout="auto" unmountOnExit>
-                  <List component="div" disablePadding>
-                    {item.children?.map((child) => {
-                      const ChildIcon = child.icon;
-                      const isChildActive = location.pathname === child.path;
+                {/* Children */}
+                {hasChildren && (
+                  <div
+                    className={`transition-all duration-300 ease-in-out overflow-hidden ${
+                      inventoryOpen
+                        ? "max-h-40 opacity-100"
+                        : "max-h-0 opacity-0"
+                    }`}
+                  >
+                    <div className="pl-11 space-y-1 mt-1">
+                      {item.children?.map((child) => {
+                        const ChildIcon = child.icon;
+                        const isChildActive = location.pathname === child.path;
 
-                      return (
-                        <ListItem
-                          key={child.path}
-                          disablePadding
-                          sx={{ mb: 0.5 }}
-                        >
-                          <ListItemButton
+                        return (
+                          <button
+                            key={child.path}
                             onClick={() => navigate(child.path)}
-                            sx={{
-                              borderRadius: 2,
-                              py: 1,
-                              pl: 7,
-                              bgcolor: isChildActive
-                                ? "hsl(var(--sidebar-accent))"
-                                : "transparent",
-                              color: isChildActive
-                                ? "hsl(var(--sidebar-accent-foreground))"
-                                : "hsl(var(--sidebar-foreground))",
-                              "&:hover": {
-                                bgcolor: isChildActive
-                                  ? "hsl(var(--sidebar-accent))"
-                                  : "hsl(var(--muted))",
-                              },
-                            }}
+                            className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg transition-all text-sm ${
+                              isChildActive
+                                ? "bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-semibold"
+                                : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700"
+                            }`}
                           >
-                            <ListItemIcon sx={{ minWidth: 36 }}>
-                              <ChildIcon
-                                sx={{ color: "inherit", fontSize: 20 }}
-                              />
-                            </ListItemIcon>
-                            <ListItemText
-                              primary={child.label}
-                              primaryTypographyProps={{
-                                fontSize: 13,
-                                fontWeight: isChildActive ? 600 : 500,
-                              }}
+                            <ChildIcon
+                              className={`w-4 h-4 ${
+                                isChildActive
+                                  ? "text-blue-700 dark:text-blue-300"
+                                  : ""
+                              }`}
                             />
-                          </ListItemButton>
-                        </ListItem>
-                      );
-                    })}
-                  </List>
-                </Collapse>
-              )}
-            </Box>
-          );
-        })}
-      </List>
+                            <span>{child.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </nav>
 
-      <Box sx={{ p: 2, borderTop: "1px solid hsl(var(--sidebar-border))" }}>
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            gap: 1.5,
-            p: 1,
-            bgcolor: "hsl(var(--sidebar-accent))",
-            borderRadius: 1,
-          }}
-        >
-          <Avatar
-            sx={{
-              width: 40,
-              height: 40,
-              bgcolor: "hsl(var(--primary))",
-            }}
-          >
-            AC
-          </Avatar>
-          <Box>
-            <Typography
-              variant="body2"
-              sx={{ fontWeight: 600, color: "hsl(var(--foreground))" }}
-            >
-              Alex Carter
-            </Typography>
-            <Typography
-              variant="caption"
-              sx={{ color: "hsl(var(--muted-foreground))" }}
-            >
-              Store Manager
-            </Typography>
-          </Box>
-          <ThemeToggle />
-        </Box>
-      </Box>
-    </Drawer>
+        {/* User Profile */}
+        <div className="p-4 border-t border-gray-200 dark:border-slate-700">
+          <div className="flex items-center gap-3 p-3 bg-blue-100 dark:bg-blue-900/50 rounded-xl">
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-md">
+              AC
+            </div>
+            <div>
+              <p className="font-semibold text-gray-900 dark:text-white text-sm">
+                Alex Carter
+              </p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">
+                Store Manager
+              </p>
+            </div>
+            <ThemeToggle />
+          </div>
+        </div>
+      </div>
+    </>
   );
 }

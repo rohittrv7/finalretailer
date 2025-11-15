@@ -1,6 +1,7 @@
-import { ReactNode } from 'react';
-import { Box } from '@mui/material';
-import Sidebar from './Sidebar';
+"use client";
+
+import { ReactNode } from "react";
+import Sidebar from "./Sidebar";
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -8,18 +9,13 @@ interface MainLayoutProps {
 
 export default function MainLayout({ children }: MainLayoutProps) {
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+    <div className="flex h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-blue-950 dark:to-indigo-950">
+      {/* Sidebar - Fixed */}
       <Sidebar />
-      <Box
-        component="main"
-        sx={{
-          flexGrow: 1,
-          bgcolor: 'hsl(var(--background))',
-          minHeight: '100vh',
-        }}
-      >
-        {children}
-      </Box>
-    </Box>
+
+      <main className="flex-1 overflow-y-auto pl-60">
+        <div className="min-h-full">{children}</div>
+      </main>
+    </div>
   );
 }

@@ -1,14 +1,7 @@
+"use client";
+
 import { useState } from "react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Check } from "lucide-react";
+import { Check, BadgeCheck } from "lucide-react";
 import MainLayout from "@/components/Layout/MainLayout";
 
 export default function PricingSection() {
@@ -21,7 +14,6 @@ export default function PricingSection() {
       name: "Starter",
       description: "App trial + basic offline billing",
       price: { oneTime: 99 },
-      icon: Check,
       features: [
         "Quick Billing",
         "Inventory Management",
@@ -36,11 +28,7 @@ export default function PricingSection() {
     {
       name: "Standard",
       description: "Cloud sync + GST + Barcode + Alerts",
-      price: {
-        monthly: 299,
-        yearly: 299 * 12,
-      },
-      icon: Check,
+      price: { monthly: 299, yearly: 299 * 12 },
       features: [
         "All Starter Features",
         "Cloud Sync (Access Anywhere)",
@@ -57,11 +45,7 @@ export default function PricingSection() {
     {
       name: "Pro",
       description: "Multi-branch + Role-based management",
-      price: {
-        monthly: 499,
-        yearly: 499 * 12,
-      },
-      icon: Check,
+      price: { monthly: 499, yearly: 499 * 12 },
       features: [
         "All Standard Features",
         "Multi-branch Billing",
@@ -74,23 +58,6 @@ export default function PricingSection() {
       buttonText: "Start Business Plan",
       buttonVariant: "outline",
     },
-    // {
-    //   name: "Enterprise",
-    //   description: "For big stores & growing chains",
-    //   price: { monthly: 2499, yearly: 2000 },
-    //   icon: Check,
-    //   features: [
-    //     "All Pro Features",
-    //     "Dedicated Cloud Server",
-    //     "API Access for Integration",
-    //     "Dedicated Account Manager",
-    //     "Custom Branding (Logo + Domain)",
-    //     "Advanced Business Reports",
-    //     "Priority Support & SLA Guarantee",
-    //   ],
-    //   buttonText: "Contact Sales",
-    //   buttonVariant: "default",
-    // },
   ];
 
   const faqs = [
@@ -113,25 +80,25 @@ export default function PricingSection() {
 
   return (
     <MainLayout>
-      <div className="min-h-screen bg-gradient-to-b from-background via-muted/10 to-muted/30">
+      <div className="min-h-screen bg-gradient-to-b from-slate-50 via-blue-50/30 to-indigo-50/20 dark:from-slate-900 dark:via-blue-950/30 dark:to-indigo-950/20">
         <div className="container mx-auto px-4 py-16 max-w-7xl">
           {/* Header */}
-          <div className="text-center mb-14 relative">
-            <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
+          <div className="text-center mb-14">
+            <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
               Choose a plan that grows with you
             </h1>
-            <p className="text-lg text-muted-foreground mb-8">
+            <p className="text-lg text-gray-600 dark:text-gray-400 mb-8">
               Monthly and annual billing available. Cancel anytime.
             </p>
 
             {/* Billing Toggle */}
-            <div className="inline-flex items-center gap-3 bg-muted p-1.5 rounded-xl shadow-sm">
+            <div className="inline-flex items-center gap-3 bg-gray-100 dark:bg-slate-800 p-1.5 rounded-xl shadow-sm">
               <button
                 onClick={() => setBillingCycle("monthly")}
                 className={`px-6 py-2.5 rounded-lg font-semibold transition-all duration-200 ${
                   billingCycle === "monthly"
-                    ? "bg-card shadow-md text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
+                    ? "bg-white dark:bg-slate-700 shadow-md text-gray-900 dark:text-white"
+                    : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
                 }`}
               >
                 Monthly
@@ -140,17 +107,14 @@ export default function PricingSection() {
                 onClick={() => setBillingCycle("yearly")}
                 className={`px-6 py-2.5 rounded-lg font-semibold transition-all duration-200 flex items-center gap-2 ${
                   billingCycle === "yearly"
-                    ? "bg-card shadow-md text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
+                    ? "bg-white dark:bg-slate-700 shadow-md text-gray-900 dark:text-white"
+                    : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
                 }`}
               >
                 Yearly
-                <Badge
-                  variant="default"
-                  className="bg-primary text-primary-foreground text-xs font-bold px-2"
-                >
+                <span className="bg-gradient-to-r from-green-500 to-emerald-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
                   Save 20%
-                </Badge>
+                </span>
               </button>
             </div>
           </div>
@@ -158,104 +122,103 @@ export default function PricingSection() {
           {/* Pricing Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mb-20">
             {pricingPlans.map((plan) => {
-              const Icon = plan.icon;
               const isStarter = plan.name === "Starter";
-              const price =
-                isStarter && plan.price.oneTime
-                  ? plan.price.oneTime
-                  : billingCycle === "monthly"
-                  ? plan.price.monthly
-                  : plan.price.yearly;
+              const price = isStarter
+                ? plan.price.oneTime
+                : billingCycle === "monthly"
+                ? plan.price.monthly
+                : plan.price.yearly;
 
               return (
-                <Card
+                <div
                   key={plan.name}
-                  className={`relative transition-all duration-300 hover:shadow-2x ${
+                  className={`relative bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-gray-200 dark:border-slate-700 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 ${
                     plan.popular
-                      ? "border-primary shadow-md"
-                      : "hover:border-primary/50"
+                      ? "ring-2 ring-blue-600 dark:ring-blue-500"
+                      : ""
                   }`}
                 >
                   {plan.popular && (
                     <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
-                      <Badge className="bg-primary text-primary-foreground font-bold px-4 py-1 shadow-md">
-                        Most Popular
-                      </Badge>
+                      <span className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold px-4 py-1 rounded-full text-sm shadow-lg flex items-center gap-1">
+                        <BadgeCheck className="w-4 h-4" /> Most Popular
+                      </span>
                     </div>
                   )}
 
-                  <CardHeader className="pb-4">
+                  <div className="mb-4">
                     <div className="flex items-center gap-3 mb-2">
-                      <div className="p-2 rounded-lg bg-primary/10">
-                        <Icon className="h-6 w-6 text-primary" />
+                      <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                        <Check className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                       </div>
-                      <CardTitle className="text-2xl">{plan.name}</CardTitle>
+                      <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
+                        {plan.name}
+                      </h3>
                     </div>
-                    <CardDescription className="text-base text-muted-foreground">
+                    <p className="text-base text-gray-600 dark:text-gray-400">
                       {plan.description}
-                    </CardDescription>
-                  </CardHeader>
+                    </p>
+                  </div>
 
-                  <CardContent>
-                    <div className="mb-6">
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-4xl font-bold">₹{price}</span>
-                        <span className="text-muted-foreground">
-                          {isStarter ? " one-time" : "/mo"}
-                        </span>
-                      </div>
-                      {billingCycle === "yearly" && !isStarter && (
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Billed ₹{price * 12} annually
-                        </p>
-                      )}
+                  <div className="mb-6">
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-4xl font-bold text-gray-900 dark:text-white">
+                        ₹{price}
+                      </span>
+                      <span className="text-gray-600 dark:text-gray-400">
+                        {isStarter ? " one-time" : "/mo"}
+                      </span>
                     </div>
+                    {billingCycle === "yearly" && !isStarter && (
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                        Billed ₹{price * 12} annually
+                      </p>
+                    )}
+                  </div>
 
-                    <ul className="space-y-3 mb-8">
-                      {plan.features.map((feature, index) => (
-                        <li key={index} className="flex items-start gap-2">
-                          <Check className="h-5 w-5 text-success shrink-0 mt-0.5" />
-                          <span className="text-sm leading-relaxed">
-                            {feature}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
+                  <ul className="space-y-3 mb-8">
+                    {plan.features.map((feature, index) => (
+                      <li key={index} className="flex items-start gap-2">
+                        <Check className="h-5 w-5 text-green-600 dark:text-green-400 shrink-0 mt-0.5" />
+                        <span className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                          {feature}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
 
-                    <Button
-                      variant={plan.buttonVariant}
-                      className={`w-full font-semibold py-2.5 rounded-lg transition-all ${
-                        plan.buttonVariant === "default"
-                          ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-md"
-                          : "hover:bg-muted"
-                      }`}
-                    >
-                      {plan.buttonText}
-                    </Button>
-                  </CardContent>
-                </Card>
+                  <button
+                    className={`w-full font-semibold py-2.5 rounded-lg transition-all duration-200 ${
+                      plan.buttonVariant === "default"
+                        ? "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md"
+                        : "border border-gray-300 dark:border-slate-600 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-slate-700"
+                    }`}
+                  >
+                    {plan.buttonText}
+                  </button>
+                </div>
               );
             })}
           </div>
 
           {/* FAQs */}
-          <Card className="mx-auto shadow-lg hover:shadow-xl transition-all">
-            <CardHeader>
-              <CardTitle className="text-2xl font-bold text-center">
-                Frequently Asked Questions
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
+          <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl p-8 shadow-xl border border-gray-200 dark:border-slate-700 mx-auto max-w-4xl">
+            <h2 className="text-2xl font-bold text-center text-gray-900 dark:text-white mb-8">
+              Frequently Asked Questions
+            </h2>
+            <div className="space-y-6">
               {faqs.map((faq, index) => (
                 <div key={index} className="text-center md:text-left">
-                  <h3 className="font-semibold text-lg mb-2">{faq.question}</h3>
-                  <p className="text-muted-foreground leading-relaxed">
+                  <h3 className="font-semibold text-lg text-gray-900 dark:text-white mb-2">
+                    {faq.question}
+                  </h3>
+                  <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
                     {faq.answer}
                   </p>
                 </div>
               ))}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
       </div>
     </MainLayout>
