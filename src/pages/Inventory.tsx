@@ -1,49 +1,26 @@
-import { useState } from "react";
-import {
-  Box,
-  Grid,
-  Card,
-  CardContent,
-  Typography,
-  Button,
-  TextField,
-  InputAdornment,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Chip,
-  IconButton,
-  Menu,
-  MenuItem,
-  // Avatar,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TablePagination,
-} from "@mui/material";
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Search,
-  Add,
-  FileDownload,
-  MoreVert,
+  Plus,
+  Download,
+  MoreVertical,
   Edit,
-  Delete,
-  Inventory2,
-  Warning,
+  Trash2,
+  Package,
+  AlertTriangle,
   TrendingUp,
   TrendingDown,
-} from "@mui/icons-material";
-import MainLayout from "../components/Layout/MainLayout";
-import { toast } from "@/hooks/use-toast";
-import { InventoryItem } from "@/types/inventoryItems";
-import { useNavigate } from "react-router-dom";
+  ChevronLeft,
+  ChevronRight,
+  X,
+} from "lucide-react";
+import MainLayout from "@/components/Layout/MainLayout";
+import CustomTable, { Column } from "@/components/CustomTable";
 
-interface InventoryListItem {
+interface InventoryItem {
   id: string;
+  title: string;
   name: string;
   sku: string;
   category: string;
@@ -54,7 +31,7 @@ interface InventoryListItem {
   movement: "up" | "down";
 }
 
-const inventoryData: InventoryListItem[] = [
+const inventoryData: InventoryItem[] = [
   {
     id: "1",
     name: "Milk 1L",
@@ -189,458 +166,218 @@ const inventoryData: InventoryListItem[] = [
   },
 ];
 
-const statsCards = [
+const stats = [
   {
     title: "Total Items",
     value: "1,247",
-    icon: Inventory2,
-    color: "hsl(var(--primary))",
+    icon: Package,
+    color: "from-blue-500 to-indigo-600",
   },
   {
     title: "Low Stock",
     value: "23",
-    icon: Warning,
-    color: "hsl(var(--warning))",
+    icon: AlertTriangle,
+    color: "from-amber-500 to-orange-600",
   },
   {
     title: "Out of Stock",
     value: "5",
-    icon: Warning,
-    color: "hsl(var(--destructive))",
+    icon: AlertTriangle,
+    color: "from-red-500 to-rose-600",
   },
   {
     title: "Stock Value",
     value: "$45,320",
     icon: TrendingUp,
-    color: "hsl(var(--success))",
+    color: "from-green-500 to-emerald-600",
   },
 ];
 
 export default function Inventory() {
   const navigate = useNavigate();
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [selectedItem, setSelectedItem] = useState<InventoryListItem | null>(
-    null
-  );
-  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [inventoryList, setInventoryList] =
-    useState<InventoryListItem[]>(inventoryData);
+  const [search, setSearch] = useState("");
+  // const [page, setPage] = useState(0);
+  // const [rowsPerPage, setRowsPerPage] = useState(10);
+  // const [menuOpen, setMenuOpen] = useState<string | null>(null);
+  const [deleteItem, setDeleteItem] = useState<InventoryItem | null>(null);
+  const [inventory, setInventory] = useState(inventoryData);
 
-  const handleChangePage = (_event: unknown, newPage: number) => {
-    setPage(newPage);
-  };
+  // const filtered = inventory.filter(
+  //   (item) =>
+  //     item.name.toLowerCase().includes(search.toLowerCase()) ||
+  //     item.sku.toLowerCase().includes(search.toLowerCase())
+  // );
 
-  const handleChangeRowsPerPage = (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
-  };
+  // const paginated = filtered.slice(
+  //   page * rowsPerPage,
+  //   page * rowsPerPage + rowsPerPage
+  // );
 
-  const handleEdit = (item: InventoryListItem) => {
-    const editItem: InventoryItem = {
-      id: item.id,
-      productName: item.name,
-      category: item.category,
-      sku: item.sku,
-      unit: "pcs",
-      quantity: item.stock,
-      reorderLevel: item.reorder,
-      sellingPrice: parseFloat(item.price.replace("$", "").replace("/kg", "")),
-      purchasePrice: 0,
-      mrp: 0,
-      gstRate: "18%",
-      lowStockAlert: true,
-    };
-    setEditData(editItem);
-    setOpenAddModal(true);
-    setAnchorEl(null);
-  };
-
-  const handleDelete = (item: InventoryListItem) => {
-    setSelectedItem(item);
-    setOpenDeleteDialog(true);
-    setAnchorEl(null);
-  };
-
-  const confirmDelete = () => {
-    if (selectedItem) {
-      setInventoryList(
-        inventoryList.filter((item) => item.id !== selectedItem.id)
-      );
-      toast({
-        title: "Product deleted",
-        description: `${selectedItem.name} has been removed from inventory.`,
-      });
-    }
-    setOpenDeleteDialog(false);
-    setSelectedItem(null);
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "in-stock":
-        return { bg: "hsl(142, 71%, 96%)", color: "hsl(var(--success))" };
-      case "low":
-        return { bg: "hsl(38, 92%, 96%)", color: "hsl(var(--warning))" };
-      case "out":
-        return { bg: "hsl(0, 84%, 96%)", color: "hsl(var(--destructive))" };
-      default:
-        return {
-          bg: "hsl(var(--muted))",
-          color: "hsl(var(--muted-foreground))",
-        };
+  const handleDelete = () => {
+    if (deleteItem) {
+      setInventory((prev) => prev.filter((i) => i.id !== deleteItem.id));
+      setDeleteItem(null);
+      // toast
     }
   };
 
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case "in-stock":
-        return "In Stock";
-      case "low":
-        return "Low Stock";
-      case "out":
-        return "Out of Stock";
-      default:
-        return status;
-    }
-  };
+  // const getStatusStyle = (status: string) => {
+  //   switch (status) {
+  //     case "in-stock":
+  //       return {
+  //         bg: "bg-green-100 text-green-700",
+  //         border: "border-green-200",
+  //       };
+  //     case "low":
+  //       return {
+  //         bg: "bg-amber-100 text-amber-700",
+  //         border: "border-amber-200",
+  //       };
+  //     case "out":
+  //       return { bg: "bg-red-100 text-red-700", border: "border-red-200" };
+  //     default:
+  //       return { bg: "bg-gray-100 text-gray-700", border: "border-gray-200" };
+  //   }
+  // };
+
+  const inventoryColumns: Column<InventoryItem>[] = [
+    { key: "name", header: "Product", sortable: true },
+    { key: "sku", header: "SKU", sortable: true },
+    { key: "category", header: "Category" },
+    { key: "stock", header: "Stock", sortable: true, align: "center" },
+    { key: "reorder", header: "Reorder", align: "center" },
+    { key: "price", header: "Price" },
+    {
+      key: "status",
+      header: "Status",
+      render: (item: InventoryItem) => {
+        const status = {
+          "in-stock": "bg-green-100 text-green-700 border-green-200",
+          low: "bg-amber-100 text-amber-700 border-amber-200",
+          out: "bg-red-100 text-red-700 border-red-200",
+        }[item.status];
+        return (
+          <span
+            className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border ${status}`}
+          >
+            {item.status === "in-stock"
+              ? "In Stock"
+              : item.status === "low"
+              ? "Low Stock"
+              : "Out of Stock"}
+          </span>
+        );
+      },
+    },
+    { key: "actions", header: "" },
+  ];
 
   return (
     <MainLayout>
-      <Box sx={{ p: 4 }}>
-        {/* Header */}
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            mb: 4,
-          }}
-        >
-          <Typography
-            variant="h4"
-            sx={{ fontWeight: 700, color: "hsl(var(--foreground))" }}
-          >
-            Inventory
-          </Typography>
-          <Box sx={{ display: "flex", gap: 2 }}>
-            <Button
-              variant="outlined"
-              startIcon={<FileDownload />}
-              sx={{
-                borderColor: "hsl(var(--border))",
-                color: "hsl(var(--foreground))",
-                textTransform: "none",
-                fontWeight: 600,
-                borderRadius: 2,
-              }}
-            >
-              Export
-            </Button>
-            <Button
-              variant="contained"
-              startIcon={<Add />}
-              onClick={() => navigate("/inventory/add")}
-              // onClick={() => {
-              //   setEditData(null);
-              //   setOpenAddModal(true);
-              // }}
-              sx={{
-                bgcolor: "hsl(var(--primary))",
-                color: "hsl(var(--primary-foreground))",
-                px: 3,
-                py: 1.25,
-                borderRadius: 2,
-                textTransform: "none",
-                fontWeight: 600,
-                boxShadow: "var(--shadow-primary)",
-                "&:hover": { bgcolor: "hsl(var(--primary-hover))" },
-              }}
-            >
-              Add Item
-            </Button>
-          </Box>
-        </Box>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-blue-950 dark:to-indigo-950 p-6">
+        <div className="max-w-7xl mx-auto space-y-8">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white">
+                Inventory
+              </h1>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                Manage your stock levels and reorder points
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button className="flex items-center gap-2 px-4 py-2.5 border border-gray-300 dark:border-slate-700 rounded-xl text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-100 dark:hover:bg-slate-800 transition-all">
+                <Download className="w-4 h-4" /> Export
+              </button>
+              <button
+                onClick={() => navigate("/inventory/add")}
+                className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold px-5 py-2.5 rounded-xl shadow-lg transform transition-all duration-200 hover:scale-105 hover:shadow-xl"
+              >
+                <Plus className="w-5 h-5" /> Add Item
+              </button>
+            </div>
+          </div>
 
-        {/* Stats */}
-        <Grid container spacing={3} sx={{ mb: 4 }}>
-          {statsCards.map((stat) => {
-            const Icon = stat.icon;
-            return (
-              <Grid key={stat.title} xs={12} sm={6} md={3} size={3}>
-                <Card
-                  sx={{
-                    bgcolor: "hsl(var(--card))",
-                    borderRadius: 1,
-                    boxShadow: "var(--shadow-md)",
-                  }}
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {stats.map((stat, idx) => {
+              const Icon = stat.icon;
+              return (
+                <div
+                  key={idx}
+                  className="group relative overflow-hidden rounded-2xl bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm p-6 shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1 border border-white/20"
                 >
-                  <CardContent sx={{ p: 3 }}>
-                    <Box
-                      sx={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "start",
-                        mb: 2,
-                      }}
+                  <div className="flex justify-between items-start mb-4">
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                      {stat.title}
+                    </p>
+                    <div
+                      className={`p-2.5 rounded-xl bg-gradient-to-br ${stat.color} text-white shadow-md`}
                     >
-                      <Typography
-                        variant="body2"
-                        sx={{ color: "hsl(var(--muted-foreground))" }}
-                      >
-                        {stat.title}
-                      </Typography>
-                      <Icon sx={{ color: stat.color, fontSize: 24 }} />
-                    </Box>
-                    <Typography
-                      variant="h4"
-                      sx={{ fontWeight: 700, color: "hsl(var(--foreground))" }}
-                    >
-                      {stat.value}
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-            );
-          })}
-        </Grid>
+                      <Icon className="w-5 h-5" />
+                    </div>
+                  </div>
+                  <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                    {stat.value}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
 
-        {/* Inventory Table */}
-        <Card
-          sx={{
-            bgcolor: "hsl(var(--card))",
-            borderRadius: 1,
-            boxShadow: "var(--shadow-md)",
-          }}
-        >
-          <CardContent sx={{ p: 3 }}>
-            <Box sx={{ mb: 3 }}>
-              <Grid container spacing={2}>
-                <Grid xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    placeholder="Search products, SKU or barcode"
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <Search
-                            sx={{ color: "hsl(var(--muted-foreground))" }}
-                          />
-                        </InputAdornment>
-                      ),
-                    }}
-                    sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2 } }}
-                  />
-                </Grid>
-              </Grid>
-            </Box>
-
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell
-                      sx={{ color: "hsl(var(--primary))", fontWeight: 600 }}
-                    >
-                      Product
-                    </TableCell>
-                    <TableCell
-                      sx={{ color: "hsl(var(--primary))", fontWeight: 600 }}
-                    >
-                      SKU
-                    </TableCell>
-                    <TableCell
-                      sx={{ color: "hsl(var(--primary))", fontWeight: 600 }}
-                    >
-                      Category
-                    </TableCell>
-                    <TableCell
-                      sx={{ color: "hsl(var(--primary))", fontWeight: 600 }}
-                    >
-                      Stock
-                    </TableCell>
-                    <TableCell
-                      sx={{ color: "hsl(var(--primary))", fontWeight: 600 }}
-                    >
-                      Reorder Point
-                    </TableCell>
-                    <TableCell
-                      sx={{ color: "hsl(var(--primary))", fontWeight: 600 }}
-                    >
-                      Price
-                    </TableCell>
-                    <TableCell
-                      sx={{ color: "hsl(var(--primary))", fontWeight: 600 }}
-                    >
-                      Status
-                    </TableCell>
-                    <TableCell
-                      sx={{ color: "hsl(var(--primary))", fontWeight: 600 }}
-                    >
-                      Movement
-                    </TableCell>
-                    <TableCell></TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {inventoryList
-                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                    .map((item) => {
-                      const statusStyle = getStatusColor(item.status);
-                      return (
-                        <TableRow key={item.id} hover>
-                          <TableCell sx={{ fontWeight: 600 }}>
-                            {item.name}
-                          </TableCell>
-                          <TableCell sx={{ color: "hsl(var(--primary))" }}>
-                            {item.sku}
-                          </TableCell>
-                          <TableCell>{item.category}</TableCell>
-                          <TableCell sx={{ fontWeight: 600 }}>
-                            {item.stock}
-                          </TableCell>
-                          <TableCell
-                            sx={{ color: "hsl(var(--muted-foreground))" }}
-                          >
-                            {item.reorder}
-                          </TableCell>
-                          <TableCell sx={{ fontWeight: 600 }}>
-                            {item.price}
-                          </TableCell>
-                          <TableCell>
-                            <Chip
-                              label={getStatusLabel(item.status)}
-                              size="small"
-                              sx={{
-                                bgcolor: statusStyle.bg,
-                                color: statusStyle.color,
-                                fontWeight: 600,
-                                fontSize: 12,
-                              }}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            {item.movement === "up" ? (
-                              <TrendingUp
-                                sx={{ color: "hsl(var(--success))" }}
-                              />
-                            ) : (
-                              <TrendingDown
-                                sx={{ color: "hsl(var(--destructive))" }}
-                              />
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <IconButton
-                              size="small"
-                              onClick={(e) => {
-                                setSelectedItem(item);
-                                setAnchorEl(e.currentTarget);
-                              }}
-                            >
-                              <MoreVert />
-                            </IconButton>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                </TableBody>
-              </Table>
-            </TableContainer>
-
-            <TablePagination
-              rowsPerPageOptions={[5, 10, 25, 50]}
-              component="div"
-              count={inventoryList.length}
-              rowsPerPage={rowsPerPage}
-              page={page}
-              onPageChange={handleChangePage}
-              onRowsPerPageChange={handleChangeRowsPerPage}
-              sx={{
-                borderTop: "1px solid hsl(var(--border))",
-                "& .MuiTablePagination-toolbar": {
-                  color: "hsl(var(--foreground))",
-                },
-              }}
+          {/* <div className="overflow-x-auto"> */}
+            <CustomTable
+              data={inventory}
+              columns={inventoryColumns}
+              title="Inventory"
+              onAdd={() => navigate("/inventory/add")}
+              onExport={() => alert("Exporting...")}
+              onEdit={(item) => navigate(`/inventory/edit/${item.id}`)}
+              onDelete={(item) => setDeleteItem(item)}
             />
-          </CardContent>
-        </Card>
+          {/* </div> */}
+        </div>
+      </div>
 
-        <Menu
-          anchorEl={anchorEl}
-          open={Boolean(anchorEl)}
-          onClose={() => {
-            setAnchorEl(null);
-            setSelectedItem(null);
-          }}
-        >
-          <MenuItem onClick={() => selectedItem && handleEdit(selectedItem)}>
-            <Edit sx={{ mr: 1, fontSize: 18 }} /> Edit
-          </MenuItem>
-          <MenuItem
-            onClick={() => selectedItem && handleDelete(selectedItem)}
-            sx={{ color: "hsl(var(--destructive))" }}
-          >
-            <Delete sx={{ mr: 1, fontSize: 18 }} /> Delete
-          </MenuItem>
-        </Menu>
-
-        {/* Delete Confirmation Dialog */}
-        <Dialog
-          open={openDeleteDialog}
-          onClose={() => setOpenDeleteDialog(false)}
-          PaperProps={{
-            sx: {
-              borderRadius: 1,
-              bgcolor: "hsl(var(--background))",
-              boxShadow: "var(--shadow-lg)",
-            },
-          }}
-        >
-          <DialogTitle
-            sx={{ fontWeight: 700, color: "hsl(var(--foreground))" }}
-          >
-            Confirm Delete
-          </DialogTitle>
-          <DialogContent>
-            <Typography sx={{ color: "hsl(var(--muted-foreground))" }}>
+      {deleteItem && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                Confirm Delete
+              </h3>
+              <button
+                onClick={() => setDeleteItem(null)}
+                className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
               Are you sure you want to delete{" "}
-              <strong>{selectedItem?.name}</strong>? This action cannot be
-              undone.
-            </Typography>
-          </DialogContent>
-          <DialogActions sx={{ p: 3, pt: 0 }}>
-            <Button
-              onClick={() => setOpenDeleteDialog(false)}
-              variant="outlined"
-              sx={{
-                borderColor: "hsl(var(--border))",
-                color: "hsl(var(--foreground))",
-                textTransform: "none",
-                borderRadius: 2,
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={confirmDelete}
-              variant="contained"
-              sx={{
-                bgcolor: "hsl(var(--destructive))",
-                color: "white",
-                textTransform: "none",
-                borderRadius: 2,
-                "&:hover": { bgcolor: "hsl(var(--destructive) / 0.9)" },
-              }}
-            >
-              Delete
-            </Button>
-          </DialogActions>
-        </Dialog>
-      </Box>
+              <span className="font-semibold text-gray-900 dark:text-white">
+                {deleteItem.name}
+              </span>
+              ? This action cannot be undone.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setDeleteItem(null)}
+                className="px-4 py-2.5 border border-gray-300 dark:border-slate-600 rounded-xl text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-100 dark:hover:bg-slate-700 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                className="px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white font-medium rounded-xl shadow-lg transform transition-all duration-200 hover:scale-105 hover:shadow-xl"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </MainLayout>
   );
 }

@@ -1,460 +1,310 @@
-import { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
+import axios from "axios";
 import {
-  Box,
-  Grid,
-  Card,
-  CardContent,
-  Typography,
-  Button,
-  TextField,
-  InputAdornment,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Chip,
-  Avatar,
-  IconButton,
-} from "@mui/material";
-import {
-  Search,
-  Add,
-  FileDownload,
-  People,
+  Users,
   Star,
   ShoppingBag,
-  AttachMoney,
-  Edit,
-  Delete,
-  Mail,
-  Phone,
-} from "@mui/icons-material";
-import MainLayout from "../components/Layout/MainLayout";
-import axios from "axios";
-import CustomTable from "@/components/CustomTable";
-import { sampleCustomers } from "@/data/data";
-import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
-import { TableColumn } from "@/types/common";
+  DollarSign,
+  Search,
+  Plus,
+  Download,
+  Edit3,
+  Trash2,
+  Crown,
+  Medal,
+  Award,
+} from "lucide-react";
+import MainLayout from "@/components/Layout/MainLayout";
 
 interface Customer {
   id: number;
-  name: string;
+  firstName: string;
+  lastName: string;
   email: string;
   phone: string;
-  tier: "Platinum" | "Gold" | "Silver" | "Regular";
+  image: string;
+  tier: "Gold" | "Silver" | "Bronze" | "Regular";
   totalSpent: string;
   visits: number;
   lastVisit: string;
 }
 
 const statsCards = [
-  {
-    title: "Total Customers",
-    value: "1,847",
-    icon: People,
-    color: "hsl(var(--primary))",
-  },
-  {
-    title: "Gold Members",
-    value: "124",
-    icon: Star,
-    color: "hsl(38, 92%, 50%)",
-  },
+  { title: "Total Customers", value: "1,847", icon: Users, color: "blue" },
+  { title: "Gold Members", value: "124", icon: Crown, color: "yellow" },
   {
     title: "Avg. Purchase",
     value: "$54.20",
     icon: ShoppingBag,
-    color: "hsl(var(--success))",
+    color: "green",
   },
   {
     title: "Lifetime Value",
     value: "$125k",
-    icon: AttachMoney,
-    color: "hsl(var(--primary))",
+    icon: DollarSign,
+    color: "purple",
   },
 ];
 
 export default function Customers() {
-  const [customers, setCustomers] = useState([]);
-  const getTierColor = (tier: string) => {
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    axios
+      .get("https://dummyjson.com/users?limit=10")
+      .then((res) => {
+        const fetched = res.data.users.map((u: any, i: number) => ({
+          id: u.id,
+          firstName: u.firstName,
+          lastName: u.lastName,
+          email: u.email,
+          phone: u.phone,
+          image: u.image,
+          tier: ["Gold", "Silver", "Bronze", "Regular"][
+            Math.floor(Math.random() * 4)
+          ] as any,
+          totalSpent: `$${Math.floor(Math.random() * 3000 + 100)}`,
+          visits: Math.floor(Math.random() * 80 + 5),
+          lastVisit: [
+            "Today",
+            "Yesterday",
+            "2 days ago",
+            "1 week ago",
+            "2 weeks ago",
+          ][Math.floor(Math.random() * 5)],
+        }));
+        setCustomers(fetched);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error(err);
+        setLoading(false);
+      });
+  }, []);
+
+  const filteredCustomers = customers.filter(
+    (c) =>
+      `${c.firstName} ${c.lastName}`
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase()) ||
+      c.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      c.phone.includes(searchQuery)
+  );
+
+  const getTierConfig = (tier: string) => {
     switch (tier) {
       case "Gold":
-        return { bg: "hsl(38, 92%, 96%)", color: "hsl(38, 92%, 50%)" };
+        return {
+          bg: "bg-yellow-100 dark:bg-yellow-900/30",
+          text: "text-yellow-700 dark:text-yellow-400",
+          icon: Crown,
+        };
       case "Silver":
-        return { bg: "hsl(0, 0%, 94%)", color: "hsl(0, 0%, 40%)" };
+        return {
+          bg: "bg-gray-100 dark:bg-gray-800/50",
+          text: "text-gray-700 dark:text-gray-400",
+          icon: Medal,
+        };
       case "Bronze":
-        return { bg: "hsl(25, 75%, 96%)", color: "hsl(25, 75%, 50%)" };
+        return {
+          bg: "bg-orange-100 dark:bg-orange-900/30",
+          text: "text-orange-700 dark:text-orange-400",
+          icon: Award,
+        };
       default:
         return {
-          bg: "hsl(var(--muted))",
-          color: "hsl(var(--muted-foreground))",
+          bg: "bg-slate-100 dark:bg-slate-700",
+          text: "text-slate-700 dark:text-slate-400",
+          icon: null,
         };
     }
   };
 
-  const columns: TableColumn<Customer>[] = [
-    {
-      id: "customer",
-      header: "Customer",
-      accessor: "name",
-      cell: (value: string, row: Customer) => (
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold">
-            {value
-              .split(" ")
-              .map((n) => n[0])
-              .join("")}
-          </div>
-          <span className="font-semibold text-gray-900">{value}</span>
-        </div>
-      ),
-    },
-    {
-      id: "contact",
-      header: "Contact",
-      accessor: "email",
-      cell: (value: string, row: Customer) => (
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 text-gray-700">
-            <Mail className="h-3.5 w-3.5 text-gray-400" />
-            <span className="text-sm">{value}</span>
-          </div>
-          <div className="flex items-center gap-2 text-gray-500">
-            <Phone className="h-3.5 w-3.5 text-gray-400" />
-            <span className="text-xs">{row.phone}</span>
-          </div>
-        </div>
-      ),
-      sortable: false,
-    },
-    {
-      id: "tier",
-      header: "Tier",
-      accessor: "tier",
-      cell: (value: Customer["tier"]) => {
-        const colors = getTierColor(value);
-        return (
-          <span
-            className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${colors.bg} ${colors.text} border ${colors.border}`}
-          >
-            {value}
-          </span>
-        );
-      },
-    },
-    {
-      id: "totalSpent",
-      header: "Total Spent",
-      accessor: "totalSpent",
-      cell: (value: string) => (
-        <span className="font-bold text-green-600">{value}</span>
-      ),
-    },
-    {
-      id: "visits",
-      header: "Visits",
-      accessor: "visits",
-      cell: (value: number) => (
-        <span className="font-semibold text-gray-700">{value}</span>
-      ),
-    },
-    {
-      id: "lastVisit",
-      header: "Last Visit",
-      accessor: "lastVisit",
-      cell: (value: string) => <span className="text-gray-600">{value}</span>,
-    },
-    {
-      id: "actions",
-      header: "Actions",
-      sortable: false,
-      cell: (_: any, row: Customer) => (
-        <div className="flex items-center gap-2">
-          <button
-            className="p-2 hover:bg-blue-100 rounded-lg transition-colors text-blue-600"
-            onClick={(e) => {
-              e.stopPropagation();
-              alert(`Edit ${row.name}`);
-            }}
-          >
-            <Edit className="h-4 w-4" />
-          </button>
-          <button
-            className="p-2 hover:bg-red-100 rounded-lg transition-colors text-red-600"
-            onClick={(e) => {
-              e.stopPropagation();
-              alert(`Delete ${row.name}`);
-            }}
-          >
-            <DeleteOutlineRoundedIcon className="h-4 w-4" />
-          </button>
-        </div>
-      ),
-    },
-  ];
-
-  useEffect(() => {
-    axios
-      .get("https://dummyjson.com/users")
-      .then((response) => {
-        setCustomers(response?.data?.users || []);
-        console.log(response?.data?.users);
-      })
-      .catch((error) => {
-        console.error("Error fetching users:", error);
-      });
-  }, []);
+  const getInitials = (first: string, last: string) => {
+    return `${first[0]}${last[0]}`.toUpperCase();
+  };
 
   return (
     <MainLayout>
-      <Box sx={{ p: 4 }}>
-        {/* Header */}
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            mb: 4,
-          }}
-        >
-          <Typography
-            variant="h4"
-            sx={{ fontWeight: 700, color: "hsl(var(--foreground))" }}
-          >
-            Customers
-          </Typography>
-          <Box sx={{ display: "flex", gap: 2 }}>
-            <Button
-              variant="outlined"
-              startIcon={<FileDownload />}
-              sx={{
-                borderColor: "hsl(var(--border))",
-                color: "hsl(var(--foreground))",
-                textTransform: "none",
-                fontWeight: 600,
-                borderRadius: 1,
-              }}
-            >
-              Export
-            </Button>
-            <Button
-              variant="contained"
-              startIcon={<Add />}
-              sx={{
-                bgcolor: "hsl(var(--primary))",
-                color: "hsl(var(--primary-foreground))",
-                px: 3,
-                py: 1.25,
-                borderRadius: 1,
-                textTransform: "none",
-                fontWeight: 600,
-                boxShadow: "var(--shadow-primary)",
-                "&:hover": { bgcolor: "hsl(var(--primary-hover))" },
-              }}
-            >
-              Add Customer
-            </Button>
-          </Box>
-        </Box>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-blue-950 dark:to-indigo-950 p-6">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+            <div>
+              <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white">
+                Customers
+              </h1>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                Manage loyalty and customer relationships
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button className="flex items-center gap-2 px-4 py-2.5 border border-gray-300 dark:border-slate-600 rounded-xl text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-100 dark:hover:bg-slate-700 transition-all">
+                <Download className="w-4 h-4" /> Export
+              </button>
+              <button className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold px-5 py-2.5 rounded-xl shadow-lg transform transition-all duration-200 hover:scale-105 hover:shadow-xl">
+                <Plus className="w-5 h-5" /> Add Customer
+              </button>
+            </div>
+          </div>
 
-        {/* Stats */}
-        <Grid container spacing={3} sx={{ mb: 4 }}>
-          {statsCards.map((stat) => {
-            const Icon = stat.icon;
-            return (
-              <Grid key={stat.title} xs={12} sm={6} md={3} size={3}>
-                <Card
-                  sx={{
-                    bgcolor: "hsl(var(--card))",
-                    borderRadius: 1,
-                    boxShadow: "var(--shadow-md)",
-                  }}
+          {/* Stats */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {statsCards.map((stat, i) => {
+              const Icon = stat.icon;
+              const colors = {
+                blue: "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400",
+                yellow:
+                  "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400",
+                green:
+                  "bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400",
+                purple:
+                  "bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400",
+              };
+              return (
+                <div
+                  key={i}
+                  className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-white/20 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1"
                 >
-                  <CardContent sx={{ p: 3 }}>
-                    <Box
-                      sx={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "start",
-                        mb: 2,
-                      }}
+                  <div className="flex justify-between items-start mb-3">
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                      {stat.title}
+                    </p>
+                    <div
+                      className={`p-2 rounded-xl ${
+                        colors[stat.color as keyof typeof colors]
+                      }`}
                     >
-                      <Typography
-                        variant="body2"
-                        sx={{ color: "hsl(var(--muted-foreground))" }}
-                      >
-                        {stat.title}
-                      </Typography>
-                      <Icon sx={{ color: stat.color, fontSize: 24 }} />
-                    </Box>
-                    <Typography
-                      variant="h4"
-                      sx={{ fontWeight: 700, color: "hsl(var(--foreground))" }}
-                    >
-                      {stat.value}
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-            );
-          })}
-        </Grid>
+                      <Icon className="w-5 h-5" />
+                    </div>
+                  </div>
+                  <h3 className="text-3xl font-bold text-gray-900 dark:text-white">
+                    {stat.value}
+                  </h3>
+                </div>
+              );
+            })}
+          </div>
 
-        {/* Customers Table */}
-        <Card
-          sx={{
-            bgcolor: "hsl(var(--card))",
-            borderRadius: 1,
-            boxShadow: "var(--shadow-md)",
-          }}
-        >
-          <CardContent sx={{ p: 3 }}>
-            <Box sx={{ mb: 3 }}>
-              <TextField
-                fullWidth
-                placeholder="Search customers by name, email, or phone"
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <Search sx={{ color: "hsl(var(--muted-foreground))" }} />
-                    </InputAdornment>
-                  ),
-                }}
-                sx={{ "& .MuiOutlinedInput-root": { borderRadius: 1 } }}
-              />
-            </Box>
-            <CustomTable<Customer>
-              data={sampleCustomers}
-              columns={columns}
-              sortable={true}
-              onRowClick={(row) => console.log("Row clicked:", row)}
-            />
+          {/* Customers Table */}
+          <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 overflow-hidden">
+            <div className="p-6 border-b border-gray-200 dark:border-slate-700">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search customers by name, email, or phone"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-gray-400"
+                />
+              </div>
+            </div>
 
-            {/* <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell
-                      sx={{ color: "hsl(var(--primary))", fontWeight: 600 }}
-                    >
-                      Customer
-                    </TableCell>
-                    <TableCell
-                      sx={{ color: "hsl(var(--primary))", fontWeight: 600 }}
-                    >
-                      Contact
-                    </TableCell>
-                    <TableCell
-                      sx={{ color: "hsl(var(--primary))", fontWeight: 600 }}
-                    >
-                      Tier
-                    </TableCell>
-                    <TableCell
-                      sx={{ color: "hsl(var(--primary))", fontWeight: 600 }}
-                    >
-                      Total Spent
-                    </TableCell>
-                    <TableCell
-                      sx={{ color: "hsl(var(--primary))", fontWeight: 600 }}
-                    >
-                      Visits
-                    </TableCell>
-                    <TableCell
-                      sx={{ color: "hsl(var(--primary))", fontWeight: 600 }}
-                    >
-                      Last Visit
-                    </TableCell>
-                    <TableCell></TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {customers.map((customer) => {
-                    const tierStyle = getTierColor(customer.tier);
-                    const initials = customer.firstName
-                      .split(" ")
-                      .map((n) => n[0])
-                      .join("");
-
-                    return (
-                      <TableRow key={customer.id} hover>
-                        <TableCell>
-                          <Box
-                            sx={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 2,
-                            }}
-                          >
-                            <Avatar
-                              sx={{
-                                bgcolor: "hsl(var(--primary))",
-                                width: 36,
-                                height: 36,
-                              }}
+            <div className="overflow-x-auto">
+              {loading ? (
+                <div className="p-8 text-center">
+                  <div className="inline-block w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : (
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-200 dark:border-slate-700">
+                      <th className="text-left p-4 font-semibold text-blue-600 dark:text-blue-400">
+                        Customer
+                      </th>
+                      <th className="text-left p-4 font-semibold text-blue-600 dark:text-blue-400">
+                        Contact
+                      </th>
+                      <th className="text-left p-4 font-semibold text-blue-600 dark:text-blue-400">
+                        Tier
+                      </th>
+                      <th className="text-left p-4 font-semibold text-blue-600 dark:text-blue-400">
+                        Total Spent
+                      </th>
+                      <th className="text-left p-4 font-semibold text-blue-600 dark:text-blue-400">
+                        Visits
+                      </th>
+                      <th className="text-left p-4 font-semibold text-blue-600 dark:text-blue-400">
+                        Last Visit
+                      </th>
+                      <th className="text-left p-4 font-semibold text-blue-600 dark:text-blue-400"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredCustomers.map((customer) => {
+                      const tier = getTierConfig(customer.tier);
+                      const TierIcon = tier.icon;
+                      return (
+                        <tr
+                          key={customer.id}
+                          className="border-b border-gray-100 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors"
+                        >
+                          <td className="p-4">
+                            <div className="flex items-center gap-3">
+                              <div className="relative">
+                                <img
+                                  src={customer.image}
+                                  alt={customer.firstName}
+                                  className="w-10 h-10 rounded-full object-cover ring-2 ring-white dark:ring-slate-800"
+                                />
+                                <div className="absolute inset-0 rounded-full bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                              </div>
+                              <span className="font-semibold text-gray-900 dark:text-white">
+                                {customer.firstName} {customer.lastName}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="p-4">
+                            <div>
+                              <p className="text-sm font-medium text-gray-900 dark:text-white">
+                                {customer.email}
+                              </p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                                {customer.phone}
+                              </p>
+                            </div>
+                          </td>
+                          <td className="p-4">
+                            <span
+                              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${tier.bg} ${tier.text}`}
                             >
-                              {initials}
-                            </Avatar>
-                            <Typography sx={{ fontWeight: 600 }}>
-                              {customer.firstName}
-                            </Typography>
-                          </Box>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2">
-                            {customer.email}
-                          </Typography>
-                          <Typography
-                            variant="caption"
-                            sx={{ color: "hsl(var(--muted-foreground))" }}
-                          >
-                            {customer.phone}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Chip
-                            label={customer.tier || "Regular"}
-                            size="small"
-                            sx={{
-                              bgcolor: tierStyle.bg,
-                              color: tierStyle.color,
-                              fontWeight: 600,
-                            }}
-                          />
-                        </TableCell>
-                        <TableCell
-                          sx={{ fontWeight: 700, color: "hsl(var(--success))" }}
-                        >
-                          {customer.role}
-                        </TableCell>
-                        <TableCell sx={{ fontWeight: 600 }}>
-                          {customer.visits ?? 0}
-                        </TableCell>
-                        <TableCell
-                          sx={{ color: "hsl(var(--muted-foreground))" }}
-                        >
-                          {customer.birthDate}
-                        </TableCell>
-                        <TableCell>
-                          <Box sx={{ display: "flex", gap: 0.5 }}>
-                            <IconButton size="small">
-                              <Edit fontSize="small" />
-                            </IconButton>
-                            <IconButton size="small">
-                              <Delete fontSize="small" />
-                            </IconButton>
-                          </Box>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </TableContainer> */}
-          </CardContent>
-        </Card>
-      </Box>
+                              {TierIcon && <TierIcon className="w-3 h-3" />}
+                              {customer.tier}
+                            </span>
+                          </td>
+                          <td className="p-4 font-bold text-green-600 dark:text-green-400">
+                            {customer.totalSpent}
+                          </td>
+                          <td className="p-4 font-semibold text-gray-900 dark:text-white">
+                            {customer.visits}
+                          </td>
+                          <td className="p-4 text-sm text-gray-600 dark:text-gray-400">
+                            {customer.lastVisit}
+                          </td>
+                          <td className="p-4">
+                            <div className="flex items-center gap-2">
+                              <button className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors">
+                                <Edit3 className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                              </button>
+                              <button className="p-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors">
+                                <Trash2 className="w-4 h-4 text-red-600 dark:text-red-400" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
     </MainLayout>
   );
 }

@@ -1,6 +1,4 @@
 import { HashRouter, Routes, Route } from "react-router-dom";
-import CssBaseline from "@mui/material/CssBaseline";
-import { createTheme, ThemeProvider } from "@mui/material";
 import Dashboard from "./pages/Dashboard";
 import POSBilling from "./pages/POSBilling";
 import Inventory from "./pages/Inventory";
@@ -15,55 +13,45 @@ import NotFound from "./pages/NotFound";
 import PricingSection from "./pages/Pricing";
 import Auth from "./pages/Auth";
 import { TooltipProvider } from "./components/ui/tooltip";
-
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: "hsl(211, 100%, 50%)",
-    },
-    background: {
-      default: "hsl(0, 0%, 98%)",
-      paper: "hsl(0, 0%, 100%)",
-    },
-  },
-  typography: {
-    fontFamily:
-      '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-  },
-  shape: {
-    borderRadius: 12,
-  },
-});
+import './index.css'
 
 function MainApp() {
   return (
-    <ThemeProvider theme={theme}>
-      {/* <CssBaseline /> */}
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <HashRouter>
-          <Routes>
-            <Route path="/main_window" element={<Dashboard />} />
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/pos" element={<POSBilling />} />
-            <Route path="/inventory" element={<Inventory />} />
-            <Route path="/inventory/add" element={<InventoryAdd />} />
-            <Route path="/customers" element={<Customers />} />
-            <Route path="/suppliers" element={<Suppliers />} />
-            <Route path="/reports" element={<Auth />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/pricing" element={<PricingSection />} />
-            <Route path="/support" element={<Support />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </HashRouter>
-      </TooltipProvider>
-    </ThemeProvider>
+    <TooltipProvider>
+      <Toaster />
+      <Sonner />
+      <HashRouter>
+        <Routes>
+          <Route path="/main_window" element={<Dashboard />} />
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/pos" element={<POSBilling />} />
+          <Route path="/inventory" element={<Inventory />} />
+          <Route path="/inventory/add" element={<InventoryAdd />} />
+          <Route path="/customers" element={<Customers />} />
+          <Route path="/suppliers" element={<Suppliers />} />
+          <Route path="/reports" element={<Auth />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/pricing" element={<PricingSection />} />
+          <Route path="/support" element={<Support />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </HashRouter>
+    </TooltipProvider>
   );
 }
 
 export default MainApp;
+
+
+
+
+
+
+
+
+
+
+
 // import { createRoot } from 'react-dom/client';
 // import Wrapper from './app-components/Wrapper';
 

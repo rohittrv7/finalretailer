@@ -1,60 +1,82 @@
+import { Download } from "lucide-react";
 import {
-  Card,
-  CardContent,
-  Box,
-  Typography,
-  IconButton,
-  Grid,
-} from "@mui/material";
-import { FileDownload } from "@mui/icons-material";
-import { LineChart } from "@mui/x-charts/LineChart";
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
 import { salesData } from "@/data/data";
 
 export default function SalesOverviewCard() {
   return (
-    <Grid xs={12} md={8} size={8}>
-      <Card
-        sx={{
-          bgcolor: "hsl(var(--card))",
-          borderRadius: 1,
-          boxShadow: "var(--shadow-md)",
-          height: "100%",
-        }}
-      >
-        <CardContent sx={{ p: 3 }}>
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              mb: 3,
-            }}
-          >
-            <Typography
-              variant="h6"
-              sx={{ fontWeight: 700, color: "hsl(var(--foreground))" }}
-            >
-              Sales Overview
-            </Typography>
-            <IconButton size="small">
-              <FileDownload />
-            </IconButton>
-          </Box>
+    <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-white/20">
+      <div className="flex justify-between items-center mb-6">
+        <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+          Sales Overview
+        </h3>
+        <button className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors">
+          <Download className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+        </button>
+      </div>
 
-          {/* Line Chart */}
+      <div className="h-80">
+        <ResponsiveContainer width="100%" height="100%">
           <LineChart
-            xAxis={[{ dataKey: "month", scaleType: "band" }]}
-            series={[
-              { dataKey: "sales", label: "Sales", color: "#1976d2" },
-              { dataKey: "profit", label: "Profit", color: "#9c27b0" },
-            ]}
-            dataset={salesData}
-            height={300}
-            margin={{ top: 20, right: 20, left: 20, bottom: 20 }}
-            grid={{ horizontal: true }}
-          />
-        </CardContent>
-      </Card>
-    </Grid>
+            data={salesData}
+            margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+          >
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke="#e5e7eb"
+              className="dark:stroke-slate-700"
+            />
+            <XAxis
+              dataKey="month"
+              tick={{ fill: "#6b7280" }}
+              className="text-xs dark:text-gray-400"
+            />
+            <YAxis
+              tick={{ fill: "#6b7280" }}
+              className="text-xs dark:text-gray-400"
+            />
+            <Tooltip
+              contentStyle={{
+                backgroundColor: "rgba(255, 255, 255, 0.95)",
+                border: "1px solid #e5e7eb",
+                borderRadius: "8px",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+              }}
+              labelStyle={{ color: "#374151", fontWeight: "bold" }}
+              className="dark:bg-slate-800 dark:border-slate-700"
+            />
+            <Legend wrapperStyle={{ paddingTop: "20px" }} iconType="line" />
+            <Line
+              type="monotone"
+              dataKey="sales"
+              stroke="#3b82f6"
+              strokeWidth={3}
+              dot={{ fill: "#3b82f6", r: 5 }}
+              activeDot={{ r: 7 }}
+              name="Sales"
+              animationDuration={1500}
+            />
+            <Line
+              type="monotone"
+              dataKey="profit"
+              stroke="#8b5cf6"
+              strokeWidth={3}
+              dot={{ fill: "#8b5cf6", r: 5 }}
+              activeDot={{ r: 7 }}
+              name="Profit"
+              animationDuration={1500}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
   );
 }

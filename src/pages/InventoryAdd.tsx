@@ -1,73 +1,88 @@
-import { useState } from 'react';
+"use client";
+
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
-  Box,
-  Typography,
-  Grid,
-  TextField,
-  Button,
-  MenuItem,
-  IconButton,
-  Tooltip,
-  FormControl,
-  InputLabel,
-  Select,
-  InputAdornment,
-  Paper,
-  Switch,
-  FormControlLabel,
-} from '@mui/material';
-import {
-  AutoAwesome,
-  CameraAlt,
-  CloudUpload,
-  Info,
-  Add as AddIcon,
+  Upload,
+  RefreshCw,
   Save,
-  Refresh,
-} from '@mui/icons-material';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
-import dayjs, { Dayjs } from 'dayjs';
-import { toast } from '@/hooks/use-toast';
-import MainLayout from '../components/Layout/MainLayout';
+  Camera,
+  Plus,
+  Info,
+  AlertCircle,
+  Package,
+  DollarSign,
+  Calendar,
+  Image as ImageIcon,
+  Tag,
+  Hash,
+  Percent,
+  ToggleLeft,
+  ToggleRight,
+} from "lucide-react";
+import MainLayout from "@/components/Layout/MainLayout";
 
-const categories = ['Grocery', 'Pharmacy', 'Fertilizer', 'Others'];
-const units = ['pcs', 'kg', 'ltr', 'box', 'pack', 'bottle'];
-const gstRates = ['0%', '5%', '12%', '18%', '28%'];
+interface FormData {
+  productName: string;
+  category: string;
+  brand: string;
+  sku: string;
+  barcode: string;
+  unit: string;
+  quantity: string;
+  reorderLevel: string;
+  purchasePrice: string;
+  sellingPrice: string;
+  mrp: string;
+  discount: string;
+  gstRate: string;
+  supplier: string;
+  description: string;
+  lowStockAlert: boolean;
+}
 
-export default function InventoryAdd() {
-  const [formData, setFormData] = useState({
-    productName: '',
-    category: '',
-    brand: '',
+const categories = ["Grocery", "Pharmacy", "Fertilizer", "Others"];
+const units = ["pcs", "kg", "ltr", "box", "pack", "bottle"];
+const gstRates = ["0%", "5%", "12%", "18%", "28%"];
+const suppliers = ["ABC Distributors", "XYZ Wholesale", "Global Supplies Inc."];
+
+export default function AddProduct() {
+  const navigate = useNavigate();
+  const [formData, setFormData] = useState<FormData>({
+    productName: "",
+    category: "",
+    brand: "",
     sku: generateSKU(),
-    barcode: '',
-    unit: 'pcs',
-    quantity: '',
-    reorderLevel: '',
-    purchasePrice: '',
-    sellingPrice: '',
-    mrp: '',
-    discount: '',
-    gstRate: '18%',
-    supplier: '',
-    description: '',
+    barcode: "",
+    unit: "pcs",
+    quantity: "",
+    reorderLevel: "",
+    purchasePrice: "",
+    sellingPrice: "",
+    mrp: "",
+    discount: "",
+    gstRate: "18%",
+    supplier: "",
+    description: "",
     lowStockAlert: true,
   });
 
-  const [purchaseDate, setPurchaseDate] = useState<Dayjs | null>(dayjs());
-  const [expiryDate, setExpiryDate] = useState<Dayjs | null>(null);
+  const [purchaseDate, setPurchaseDate] = useState("2025-11-15");
+  const [expiryDate, setExpiryDate] = useState("");
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   function generateSKU() {
-    const prefix = 'SKU';
+    const prefix = "SKU";
     const random = Math.floor(100000 + Math.random() * 900000);
     return `${prefix}-${random}`;
   }
 
-  const handleChange = (field: string, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+  useEffect(() => {
+    setFormData((prev) => ({ ...prev, sku: generateSKU() }));
+  }, []);
+
+  const handleChange = (field: keyof FormData, value: any) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -83,485 +98,376 @@ export default function InventoryAdd() {
 
   const handleSave = () => {
     if (!formData.productName || !formData.category) {
-      toast({
-        title: "Validation Error",
-        description: "Product name and category are required.",
-        variant: "destructive",
-      });
+      alert("Product name and category are required.");
       return;
     }
-
-    toast({
-      title: "✅ Product added successfully!",
-      description: `${formData.productName} has been added to inventory.`,
-    });
+    alert(`${formData.productName} saved!`);
   };
 
   const handleReset = () => {
     setFormData({
-      productName: '',
-      category: '',
-      brand: '',
+      productName: "",
+      category: "",
+      brand: "",
       sku: generateSKU(),
-      barcode: '',
-      unit: 'pcs',
-      quantity: '',
-      reorderLevel: '',
-      purchasePrice: '',
-      sellingPrice: '',
-      mrp: '',
-      discount: '',
-      gstRate: '18%',
-      supplier: '',
-      description: '',
+      barcode: "",
+      unit: "pcs",
+      quantity: "",
+      reorderLevel: "",
+      purchasePrice: "",
+      sellingPrice: "",
+      mrp: "",
+      discount: "",
+      gstRate: "18%",
+      supplier: "",
+      description: "",
       lowStockAlert: true,
     });
-    setPurchaseDate(dayjs());
-    setExpiryDate(null);
+    setPurchaseDate("2025-11-15");
+    setExpiryDate("");
     setImagePreview(null);
   };
 
-  const stockStatus = 
-    !formData.quantity ? 'Out of Stock' :
-    Number(formData.quantity) < Number(formData.reorderLevel) ? 'Low Stock' :
-    'In Stock';
+  const stockStatus = !formData.quantity
+    ? "Out of Stock"
+    : Number(formData.quantity) < Number(formData.reorderLevel || 0)
+    ? "Low Stock"
+    : "In Stock";
 
-  const stockStatusColor = 
-    stockStatus === 'Out of Stock' ? 'hsl(var(--destructive))' :
-    stockStatus === 'Low Stock' ? 'hsl(var(--warning))' :
-    'hsl(var(--success))';
+  const statusColor =
+    stockStatus === "Out of Stock"
+      ? "text-red-600 bg-red-50 border-red-200"
+      : stockStatus === "Low Stock"
+      ? "text-amber-600 bg-amber-50 border-amber-200"
+      : "text-green-600 bg-green-50 border-green-200";
 
   return (
     <MainLayout>
-      <LocalizationProvider dateAdapter={AdapterDayjs}>
-        <Box sx={{ p: 4 }}>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-blue-950 dark:to-indigo-950 p-6">
+        <div className="max-w-7xl mx-auto">
           {/* Header */}
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
-            <Box>
-              <Typography variant="h4" sx={{ fontWeight: 700, color: 'hsl(var(--foreground))' }}>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+            <div>
+              <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white">
                 Add New Product
-              </Typography>
-              <Typography variant="body2" sx={{ color: 'hsl(var(--muted-foreground))', mt: 0.5 }}>
+              </h1>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                 Add a new item to your inventory
-              </Typography>
-            </Box>
-            <Box sx={{ display: 'flex', gap: 2 }}>
-              <Button
-                variant="outlined"
-                startIcon={<Refresh />}
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
                 onClick={handleReset}
-                sx={{
-                  borderColor: 'hsl(var(--border))',
-                  color: 'hsl(var(--foreground))',
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  borderRadius: 2,
-                }}
+                className="flex items-center gap-2 px-4 py-2.5 border border-gray-300 dark:border-slate-700 rounded-xl text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-100 dark:hover:bg-slate-800 transition-all"
               >
-                Reset
-              </Button>
-              <Button
-                variant="contained"
-                startIcon={<Save />}
+                <RefreshCw className="w-4 h-4" /> Reset
+              </button>
+              <button
                 onClick={handleSave}
-                sx={{
-                  bgcolor: 'hsl(var(--primary))',
-                  color: 'hsl(var(--primary-foreground))',
-                  px: 3,
-                  py: 1.25,
-                  borderRadius: 2,
-                  textTransform: 'none',
-                  fontWeight: 600,
-                  boxShadow: 'var(--shadow-primary)',
-                  '&:hover': { bgcolor: 'hsl(var(--primary-hover))' },
-                }}
+                className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold px-5 py-2.5 rounded-xl shadow-lg transform transition-all duration-200 hover:scale-105 hover:shadow-xl"
               >
-                Save Product
-              </Button>
-            </Box>
-          </Box>
+                <Save className="w-5 h-5" /> Save Product
+              </button>
+            </div>
+          </div>
 
-          <Grid container spacing={3}>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Left Column */}
-            <Grid item xs={12} md={6}>
-              {/* Basic Product Information */}
-              <Paper 
-                elevation={0} 
-                sx={{ 
-                  p: 3, 
-                  mb: 3, 
-                  bgcolor: 'hsl(var(--card))',
-                  borderRadius: 2,
-                  border: '1px solid hsl(var(--border))',
-                  boxShadow: 'var(--shadow-sm)',
-                }}
-              >
-                <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: 'hsl(var(--primary))' }}>
-                  🧾 Basic Information
-                </Typography>
-                
-                <TextField
-                  fullWidth
-                  label="Product Name"
-                  required
+            <div className="space-y-6">
+              {/* Basic Information */}
+              <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-white/20">
+                <div className="flex items-center gap-2 mb-4">
+                  <Tag className="w-5 h-5 text-blue-600" />
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    Basic Information
+                  </h3>
+                </div>
+
+                <input
+                  type="text"
+                  placeholder="Product Name *"
                   value={formData.productName}
-                  onChange={(e) => handleChange('productName', e.target.value)}
-                  sx={{ mb: 2 }}
+                  onChange={(e) => handleChange("productName", e.target.value)}
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder:text-gray-400 mb-3"
                 />
 
-                <FormControl fullWidth sx={{ mb: 2 }}>
-                  <InputLabel>Category *</InputLabel>
-                  <Select
-                    value={formData.category}
-                    label="Category *"
-                    onChange={(e) => handleChange('category', e.target.value)}
-                  >
-                    {categories.map(cat => (
-                      <MenuItem key={cat} value={cat}>{cat}</MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+                <select
+                  value={formData.category}
+                  onChange={(e) => handleChange("category", e.target.value)}
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all mb-3"
+                >
+                  <option value="">Category *</option>
+                  {categories.map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat}
+                    </option>
+                  ))}
+                </select>
 
-                <TextField
-                  fullWidth
-                  label="Brand (Optional)"
+                <input
+                  type="text"
+                  placeholder="Brand (Optional)"
                   value={formData.brand}
-                  onChange={(e) => handleChange('brand', e.target.value)}
-                  sx={{ mb: 2 }}
+                  onChange={(e) => handleChange("brand", e.target.value)}
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder:text-gray-400 mb-3"
                 />
 
-                <TextField
-                  fullWidth
-                  label="SKU"
-                  value={formData.sku}
-                  onChange={(e) => handleChange('sku', e.target.value)}
-                  InputProps={{
-                    endAdornment: (
-                      <InputAdornment position="end">
-                        <Tooltip title="Generate new SKU">
-                          <IconButton 
-                            size="small"
-                            onClick={() => handleChange('sku', generateSKU())}
-                          >
-                            <AutoAwesome fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      </InputAdornment>
-                    ),
-                  }}
-                  sx={{ mb: 2 }}
-                />
+                <div className="relative mb-3">
+                  <input
+                    type="text"
+                    value={formData.sku}
+                    onChange={(e) => handleChange("sku", e.target.value)}
+                    className="w-full pl-4 pr-12 py-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  />
+                  <button
+                    onClick={() => handleChange("sku", generateSKU())}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
+                  >
+                    <RefreshCw className="w-4 h-4 text-blue-600" />
+                  </button>
+                </div>
 
-                <TextField
-                  fullWidth
-                  label="Barcode"
-                  value={formData.barcode}
-                  onChange={(e) => handleChange('barcode', e.target.value)}
-                  InputProps={{
-                    endAdornment: (
-                      <InputAdornment position="end">
-                        <Tooltip title="Scan using camera">
-                          <IconButton size="small">
-                            <CameraAlt fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      </InputAdornment>
-                    ),
-                  }}
-                />
-              </Paper>
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Barcode"
+                    value={formData.barcode}
+                    onChange={(e) => handleChange("barcode", e.target.value)}
+                    className="w-full pl-4 pr-12 py-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder:text-gray-400"
+                  />
+                  <button className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors">
+                    <Camera className="w-4 h-4 text-blue-600" />
+                  </button>
+                </div>
+              </div>
 
               {/* Stock Details */}
-              <Paper 
-                elevation={0} 
-                sx={{ 
-                  p: 3, 
-                  mb: 3,
-                  bgcolor: 'hsl(var(--card))',
-                  borderRadius: 2,
-                  border: '1px solid hsl(var(--border))',
-                  boxShadow: 'var(--shadow-sm)',
-                }}
-              >
-                <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: 'hsl(var(--primary))' }}>
-                  📦 Stock Details
-                </Typography>
+              <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-white/20">
+                <div className="flex items-center gap-2 mb-4">
+                  <Package className="w-5 h-5 text-amber-600" />
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    Stock Details
+                  </h3>
+                </div>
 
-                <FormControl fullWidth sx={{ mb: 2 }}>
-                  <InputLabel>Unit</InputLabel>
-                  <Select
-                    value={formData.unit}
-                    label="Unit"
-                    onChange={(e) => handleChange('unit', e.target.value)}
-                  >
-                    {units.map(unit => (
-                      <MenuItem key={unit} value={unit}>{unit}</MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-
-                <TextField
-                  fullWidth
-                  type="number"
-                  label="Quantity"
-                  value={formData.quantity}
-                  onChange={(e) => handleChange('quantity', e.target.value)}
-                  sx={{ mb: 2 }}
-                />
-
-                <TextField
-                  fullWidth
-                  type="number"
-                  label="Reorder Level"
-                  value={formData.reorderLevel}
-                  onChange={(e) => handleChange('reorderLevel', e.target.value)}
-                  InputProps={{
-                    endAdornment: (
-                      <InputAdornment position="end">
-                        <Tooltip title="Low stock alert below this level">
-                          <Info fontSize="small" sx={{ color: 'hsl(var(--muted-foreground))' }} />
-                        </Tooltip>
-                      </InputAdornment>
-                    ),
-                  }}
-                  sx={{ mb: 2 }}
-                />
-
-                <Box 
-                  sx={{ 
-                    p: 2, 
-                    bgcolor: 'hsl(var(--muted))',
-                    borderRadius: 2,
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                  }}
+                <select
+                  value={formData.unit}
+                  onChange={(e) => handleChange("unit", e.target.value)}
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all mb-3"
                 >
-                  <Typography variant="body2" sx={{ color: 'hsl(var(--muted-foreground))' }}>
-                    Status
-                  </Typography>
-                  <Typography 
-                    variant="body1" 
-                    sx={{ 
-                      fontWeight: 600,
-                      color: stockStatusColor,
-                    }}
-                  >
-                    {stockStatus}
-                  </Typography>
-                </Box>
+                  {units.map((unit) => (
+                    <option key={unit} value={unit}>
+                      {unit}
+                    </option>
+                  ))}
+                </select>
 
-                <FormControlLabel
-                  control={
-                    <Switch 
-                      checked={formData.lowStockAlert}
-                      onChange={(e) => handleChange('lowStockAlert', e.target.checked)}
-                    />
-                  }
-                  label="Low Stock Alert"
-                  sx={{ mt: 2 }}
+                <input
+                  type="number"
+                  placeholder="Quantity"
+                  value={formData.quantity}
+                  onChange={(e) => handleChange("quantity", e.target.value)}
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder:text-gray-400 mb-3"
                 />
-              </Paper>
+
+                <div className="relative mb-3">
+                  <input
+                    type="number"
+                    placeholder="Reorder Level"
+                    value={formData.reorderLevel}
+                    onChange={(e) =>
+                      handleChange("reorderLevel", e.target.value)
+                    }
+                    className="w-full pl-4 pr-12 py-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder:text-gray-400"
+                  />
+                  <Info className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                </div>
+
+                <div className={`p-3 rounded-xl border ${statusColor} mb-3`}>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                      Status
+                    </span>
+                    <span className="font-bold">{stockStatus}</span>
+                  </div>
+                </div>
+
+                <label className="flex items-center gap-3 cursor-pointer">
+                  {formData.lowStockAlert ? (
+                    <ToggleRight className="w-10 h-10 text-blue-600" />
+                  ) : (
+                    <ToggleLeft className="w-10 h-10 text-gray-400" />
+                  )}
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Low Stock Alert
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={formData.lowStockAlert}
+                    onChange={(e) =>
+                      handleChange("lowStockAlert", e.target.checked)
+                    }
+                    className="sr-only"
+                  />
+                </label>
+              </div>
 
               {/* Supplier */}
-              <Paper 
-                elevation={0} 
-                sx={{ 
-                  p: 3,
-                  bgcolor: 'hsl(var(--card))',
-                  borderRadius: 2,
-                  border: '1px solid hsl(var(--border))',
-                  boxShadow: 'var(--shadow-sm)',
-                }}
-              >
-                <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: 'hsl(var(--primary))' }}>
-                  🏭 Supplier
-                </Typography>
+              <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-white/20">
+                <div className="flex items-center gap-2 mb-4">
+                  <AlertCircle className="w-5 h-5 text-purple-600" />
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    Supplier
+                  </h3>
+                </div>
 
-                <FormControl fullWidth>
-                  <InputLabel>Supplier</InputLabel>
-                  <Select
-                    value={formData.supplier}
-                    label="Supplier"
-                    onChange={(e) => handleChange('supplier', e.target.value)}
-                  >
-                    <MenuItem value="supplier1">ABC Distributors</MenuItem>
-                    <MenuItem value="supplier2">XYZ Wholesale</MenuItem>
-                    <MenuItem value="supplier3">Global Supplies Inc.</MenuItem>
-                  </Select>
-                </FormControl>
-
-                <Button
-                  startIcon={<AddIcon />}
-                  size="small"
-                  sx={{ 
-                    mt: 1.5,
-                    textTransform: 'none',
-                    color: 'hsl(var(--primary))',
-                  }}
+                <select
+                  value={formData.supplier}
+                  onChange={(e) => handleChange("supplier", e.target.value)}
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all mb-3"
                 >
-                  Add New Supplier
-                </Button>
-              </Paper>
-            </Grid>
+                  <option value="">Select Supplier</option>
+                  {suppliers.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+
+                <button className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium text-sm">
+                  <Plus className="w-4 h-4" /> Add New Supplier
+                </button>
+              </div>
+            </div>
 
             {/* Right Column */}
-            <Grid item xs={12} md={6}>
+            <div className="space-y-6">
               {/* Pricing & Tax */}
-              <Paper 
-                elevation={0} 
-                sx={{ 
-                  p: 3, 
-                  mb: 3,
-                  bgcolor: 'hsl(var(--card))',
-                  borderRadius: 2,
-                  border: '1px solid hsl(var(--border))',
-                  boxShadow: 'var(--shadow-sm)',
-                }}
-              >
-                <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: 'hsl(var(--primary))' }}>
-                  💰 Pricing & Tax
-                </Typography>
+              <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-white/20">
+                <div className="flex items-center gap-2 mb-4">
+                  <DollarSign className="w-5 h-5 text-green-600" />
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    Pricing & Tax
+                  </h3>
+                </div>
 
-                <TextField
-                  fullWidth
-                  type="number"
-                  label="Purchase Price"
-                  value={formData.purchasePrice}
-                  onChange={(e) => handleChange('purchasePrice', e.target.value)}
-                  InputProps={{
-                    startAdornment: <InputAdornment position="start">$</InputAdornment>,
-                  }}
-                  sx={{ mb: 2 }}
-                />
+                <div className="space-y-3">
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
+                      $
+                    </span>
+                    <input
+                      type="number"
+                      placeholder="Purchase Price"
+                      value={formData.purchasePrice}
+                      onChange={(e) =>
+                        handleChange("purchasePrice", e.target.value)
+                      }
+                      className="w-full pl-8 pr-4 py-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder:text-gray-400"
+                    />
+                  </div>
 
-                <TextField
-                  fullWidth
-                  type="number"
-                  label="Selling Price"
-                  value={formData.sellingPrice}
-                  onChange={(e) => handleChange('sellingPrice', e.target.value)}
-                  InputProps={{
-                    startAdornment: <InputAdornment position="start">$</InputAdornment>,
-                  }}
-                  sx={{ mb: 2 }}
-                />
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
+                      $
+                    </span>
+                    <input
+                      type="number"
+                      placeholder="Selling Price"
+                      value={formData.sellingPrice}
+                      onChange={(e) =>
+                        handleChange("sellingPrice", e.target.value)
+                      }
+                      className="w-full pl-8 pr-4 py-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder:text-gray-400"
+                    />
+                  </div>
 
-                <TextField
-                  fullWidth
-                  type="number"
-                  label="MRP"
-                  value={formData.mrp}
-                  onChange={(e) => handleChange('mrp', e.target.value)}
-                  InputProps={{
-                    startAdornment: <InputAdornment position="start">$</InputAdornment>,
-                  }}
-                  sx={{ mb: 2 }}
-                />
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
+                      $
+                    </span>
+                    <input
+                      type="number"
+                      placeholder="MRP"
+                      value={formData.mrp}
+                      onChange={(e) => handleChange("mrp", e.target.value)}
+                      className="w-full pl-8 pr-4 py-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder:text-gray-400"
+                    />
+                  </div>
 
-                <TextField
-                  fullWidth
-                  type="number"
-                  label="Discount %"
-                  value={formData.discount}
-                  onChange={(e) => handleChange('discount', e.target.value)}
-                  InputProps={{
-                    endAdornment: <InputAdornment position="end">%</InputAdornment>,
-                  }}
-                  sx={{ mb: 2 }}
-                />
+                  <div className="relative">
+                    <input
+                      type="number"
+                      placeholder="Discount %"
+                      value={formData.discount}
+                      onChange={(e) => handleChange("discount", e.target.value)}
+                      className="w-full pl-4 pr-10 py-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder:text-gray-400"
+                    />
+                    <Percent className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  </div>
 
-                <FormControl fullWidth>
-                  <InputLabel>GST Rate %</InputLabel>
-                  <Select
+                  <select
                     value={formData.gstRate}
-                    label="GST Rate %"
-                    onChange={(e) => handleChange('gstRate', e.target.value)}
+                    onChange={(e) => handleChange("gstRate", e.target.value)}
+                    className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   >
-                    {gstRates.map(rate => (
-                      <MenuItem key={rate} value={rate}>{rate}</MenuItem>
+                    {gstRates.map((rate) => (
+                      <option key={rate} value={rate}>
+                        {rate}
+                      </option>
                     ))}
-                  </Select>
-                </FormControl>
-              </Paper>
+                  </select>
+                </div>
+              </div>
 
               {/* Dates */}
-              <Paper 
-                elevation={0} 
-                sx={{ 
-                  p: 3, 
-                  mb: 3,
-                  bgcolor: 'hsl(var(--card))',
-                  borderRadius: 2,
-                  border: '1px solid hsl(var(--border))',
-                  boxShadow: 'var(--shadow-sm)',
-                }}
-              >
-                <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: 'hsl(var(--primary))' }}>
-                  📅 Dates
-                </Typography>
+              <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-white/20">
+                <div className="flex items-center gap-2 mb-4">
+                  <Calendar className="w-5 h-5 text-indigo-600" />
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    Dates
+                  </h3>
+                </div>
 
-                <DatePicker
-                  label="Purchase Date"
-                  value={purchaseDate}
-                  onChange={(newValue) => setPurchaseDate(newValue)}
-                  slotProps={{
-                    textField: {
-                      fullWidth: true,
-                      sx: { mb: 2 }
-                    }
-                  }}
-                />
+                <div className="space-y-3">
+                  <div className="relative">
+                    <input
+                      type="date"
+                      value={purchaseDate}
+                      onChange={(e) => setPurchaseDate(e.target.value)}
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    />
+                    <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                  </div>
 
-                <DatePicker
-                  label="Expiry Date (Optional)"
-                  value={expiryDate}
-                  onChange={(newValue) => setExpiryDate(newValue)}
-                  slotProps={{
-                    textField: {
-                      fullWidth: true,
-                      helperText: "For perishable goods only"
-                    }
-                  }}
-                />
-              </Paper>
+                  <div>
+                    <input
+                      type="date"
+                      value={expiryDate}
+                      onChange={(e) => setExpiryDate(e.target.value)}
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    />
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      For perishable goods only
+                    </p>
+                  </div>
+                </div>
+              </div>
 
               {/* Image & Description */}
-              <Paper 
-                elevation={0} 
-                sx={{ 
-                  p: 3,
-                  bgcolor: 'hsl(var(--card))',
-                  borderRadius: 2,
-                  border: '1px solid hsl(var(--border))',
-                  boxShadow: 'var(--shadow-sm)',
-                }}
-              >
-                <Typography variant="h6" sx={{ mb: 2, fontWeight: 600, color: 'hsl(var(--primary))' }}>
-                  🖼️ Image & Description
-                </Typography>
+              <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-white/20">
+                <div className="flex items-center gap-2 mb-4">
+                  <ImageIcon className="w-5 h-5 text-emerald-600" />
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    Image & Description
+                  </h3>
+                </div>
 
-                <Box
-                  sx={{
-                    border: '2px dashed hsl(var(--border))',
-                    borderRadius: 2,
-                    p: 3,
-                    textAlign: 'center',
-                    bgcolor: 'hsl(var(--muted))',
-                    cursor: 'pointer',
-                    mb: 2,
-                    position: 'relative',
-                    minHeight: 160,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    '&:hover': {
-                      borderColor: 'hsl(var(--primary))',
-                      bgcolor: 'hsl(var(--primary-light))',
-                    }
-                  }}
-                  onClick={() => document.getElementById('image-upload')?.click()}
+                <div
+                  onClick={() =>
+                    document.getElementById("image-upload")?.click()
+                  }
+                  className="border-2 border-dashed border-gray-300 dark:border-slate-600 rounded-xl p-6 text-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-slate-700 transition-all mb-4"
                 >
                   <input
                     id="image-upload"
@@ -571,56 +477,43 @@ export default function InventoryAdd() {
                     onChange={handleImageUpload}
                   />
                   {imagePreview ? (
-                    <img 
-                      src={imagePreview} 
-                      alt="Preview" 
-                      style={{ 
-                        maxWidth: '100%', 
-                        maxHeight: 150,
-                        borderRadius: 8,
-                      }}
+                    <img
+                      src={imagePreview}
+                      alt="Preview"
+                      className="max-w-full max-h-40 mx-auto rounded-lg"
                     />
                   ) : (
                     <>
-                      <CloudUpload sx={{ fontSize: 48, color: 'hsl(var(--primary))', mb: 1 }} />
-                      <Typography variant="body2" sx={{ color: 'hsl(var(--muted-foreground))' }}>
+                      <Upload className="w-12 h-12 mx-auto text-blue-600 mb-2" />
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
                         Click to upload or drag and drop
-                      </Typography>
-                      <Typography variant="caption" sx={{ color: 'hsl(var(--muted-foreground))' }}>
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-500">
                         PNG, JPG up to 10MB
-                      </Typography>
+                      </p>
                     </>
                   )}
-                </Box>
+                </div>
 
-                <TextField
-                  fullWidth
-                  multiline
-                  rows={4}
-                  label="Description"
-                  value={formData.description}
-                  onChange={(e) => handleChange('description', e.target.value)}
+                <textarea
                   placeholder="Add short notes about this product..."
+                  value={formData.description}
+                  onChange={(e) => handleChange("description", e.target.value)}
+                  rows={4}
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder:text-gray-400 resize-none"
                 />
-              </Paper>
-            </Grid>
-          </Grid>
+              </div>
+            </div>
+          </div>
 
-          {/* Last Updated Section */}
-          <Box 
-            sx={{ 
-              mt: 3, 
-              p: 2, 
-              bgcolor: 'hsl(var(--muted))',
-              borderRadius: 2,
-            }}
-          >
-            <Typography variant="caption" sx={{ color: 'hsl(var(--muted-foreground))' }}>
-              Last Updated By: Admin • {new Date().toLocaleString()}
-            </Typography>
-          </Box>
-        </Box>
-      </LocalizationProvider>
+          {/* Last Updated */}
+          <div className="mt-6 p-4 bg-gray-100 dark:bg-slate-800 rounded-xl">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Last Updated By: Admin • {new Date().toLocaleString("en-IN")}
+            </p>
+          </div>
+        </div>
+      </div>
     </MainLayout>
   );
 }
