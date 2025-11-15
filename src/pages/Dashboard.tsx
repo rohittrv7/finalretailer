@@ -2,14 +2,7 @@
 
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  TrendingUp,
-  Receipt,
-  AlertTriangle,
-  Clock,
-  Plus,
-  Download,
-} from "lucide-react";
+import { TrendingUp, Receipt, AlertTriangle, Clock, Plus } from "lucide-react";
 import SalesOverviewCard from "@/components/Graph/SalesOverviewCard";
 import { quickActions, topCategories, topProducts } from "@/data/data";
 import MainLayout from "@/components/Layout/MainLayout";
@@ -95,15 +88,15 @@ export default function Dashboard() {
           {/* Stats Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             {statsCards.map((stat, i) => {
-              const Icon = stat.icon;
-              const colors = {
-                blue: "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400",
-                green:
-                  "bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400",
-                yellow:
-                  "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400",
-                red: "bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400",
-              };
+              // const Icon = stat.icon;
+              // const colors = {
+              //   blue: "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400",
+              //   green:
+              //     "bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400",
+              //   yellow:
+              //     "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400",
+              //   red: "bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400",
+              // };
               return (
                 <div
                   key={i}
@@ -284,34 +277,34 @@ export default function Dashboard() {
                 </table>
               </div>
             </div>
+          </div>
 
-            {/* Quick Actions */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {quickActions.map((action, i) => {
-                const Icon = action.icon;
-                return (
-                  <button
-                    key={i}
-                    onClick={() => navigate(action.path)}
-                    className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-white/20 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 text-left"
-                  >
-                    <div className="flex items-start gap-4">
-                      <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
-                        <Icon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="font-bold text-gray-900 dark:text-white">
-                          {action.title}
-                        </h4>
-                        <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                          {action.description}
-                        </p>
-                      </div>
+          {/* Quick Actions */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
+            {quickActions.map((action, i) => {
+              const Icon = action.icon;
+              return (
+                <button
+                  key={i}
+                  onClick={() => navigate(action.path)}
+                  className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-white/20 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 text-left"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
+                      <Icon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
                     </div>
-                  </button>
-                );
-              })}
-            </div>
+                    <div className="flex-1">
+                      <h4 className="font-bold text-gray-900 dark:text-white">
+                        {action.title}
+                      </h4>
+                      <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                        {action.description}
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>

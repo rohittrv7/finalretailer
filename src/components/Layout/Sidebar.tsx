@@ -17,6 +17,7 @@ import {
   List,
   PointerOff,
 } from "lucide-react";
+import ThemeToggle from "../ThemeToggle";
 
 const drawerWidth = 240;
 
@@ -168,6 +169,7 @@ export default function Sidebar() {
                 Store Manager
               </p>
             </div>
+            <ThemeToggle />
           </div>
         </div>
       </div>
