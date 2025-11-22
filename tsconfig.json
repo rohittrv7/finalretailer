@@ -13,9 +13,10 @@
     "resolveJsonModule": true,
     "paths": {
       "*": ["node_modules/*"],
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@/frontend/*": ["./src/frontend/*"]
     },
     "jsx": "react-jsx"
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*", "src/frontend/types/electron.d.ts"]
 }
