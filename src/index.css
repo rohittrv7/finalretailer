@@ -220,7 +220,13 @@
   -webkit-app-region: none !important;
 }
 
-/* Material UI Grid v2 compatibility */
-.MuiGrid2-root {
-  box-sizing: border-box;
+/* Hide scrollbar but keep scrolling */
+.scroll-hide::-webkit-scrollbar {
+  width: 0px;
+  height: 0px;
+}
+
+.scroll-hide {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
 }
