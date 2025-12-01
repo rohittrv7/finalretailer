@@ -1,5 +1,12 @@
 export type GstType = "IGST" | "CGST_SGST";
 
+export interface InventorySummary {
+  totalItems: number;
+  lowStock: number;
+  outOfStock: number;
+  stockValue: number;
+}
+
 export interface InventoryItem {
     id: string;
     productName: string;

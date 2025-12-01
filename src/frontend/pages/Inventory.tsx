@@ -7,47 +7,28 @@ import {
   AlertTriangle,
   TrendingUp,
   Trash2,
+  Edit,
 } from "lucide-react";
 import MainLayout from "@/frontend/components/Layout/MainLayout";
-import { InventoryItem } from "@/frontend/types/inventry";
+import { InventoryItem, InventorySummary } from "@/frontend/types/inventry";
 import CustomTable, { Column } from "../components/CustomTable";
 import DeletePopup from "../components/DeletePopup";
 import { toast } from "sonner";
 import { CartItem } from "../types/cart";
-
-const stats = [
-  {
-    title: "Total Items",
-    value: "1,247",
-    icon: Package,
-    color: "from-blue-500 to-indigo-600",
-  },
-  {
-    title: "Low Stock",
-    value: "23",
-    icon: AlertTriangle,
-    color: "from-amber-500 to-orange-600",
-  },
-  {
-    title: "Out of Stock",
-    value: "5",
-    icon: AlertTriangle,
-    color: "from-red-500 to-rose-600",
-  },
-  {
-    title: "Stock Value",
-    value: "$45,320",
-    icon: TrendingUp,
-    color: "from-green-500 to-emerald-600",
-  },
-];
 
 export default function Inventory() {
   const navigate = useNavigate();
   const [openDeletePopup, setOpenDeletePopup] = useState(false);
   const [deleteItem, setDeleteItem] = useState<InventoryItem | null>(null);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [editInventory, setEditInventory] = useState<InventoryItem>();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [state, setState] = useState<InventorySummary>({
+    totalItems: 0,
+    lowStock: 0,
+    outOfStock: 0,
+    stockValue: 0,
+  });
 
   const refreshCart = async () => {
     const res = await window.electronAPI.cart.getAll();
@@ -63,10 +44,23 @@ export default function Inventory() {
     }
   };
 
+  const loadState = async () => {
+    const result = await window.electronAPI.inventory.state();
+    if (result.success && result.data) {
+      setState({
+        totalItems: result.data.totalItems ?? 0,
+        lowStock: result.data.lowStock ?? 0,
+        outOfStock: result.data.outOfStock ?? 0,
+        stockValue: result.data.stockValue ?? 0,
+      });
+    }
+  };
+
   const handleItem = async (row: InventoryItem, key: string) => {
     if (key === "edit") {
-      // setSelectedBeneficiary(row);
-      // setIsBeneficiaryModalOpen(true);
+      navigate("/inventory/add", {
+        state: { editData: row },
+      });
     } else if (key === "delete") {
       setOpenDeletePopup(true);
       setDeleteItem(row);
@@ -86,8 +80,44 @@ export default function Inventory() {
     }
   };
 
+  const getStatus = (stock: number, reorderLevel: number) => {
+    if (stock <= 0) return "out";
+    if (stock <= reorderLevel) return "low";
+    return "in-stock";
+  };
+
+  const stats = [
+    {
+      title: "Total Items",
+      value: state.totalItems || "0",
+      icon: Package,
+      color: "from-blue-500 to-indigo-600",
+    },
+    {
+      title: "Low Stock",
+      value: state.lowStock || "0",
+      icon: AlertTriangle,
+      color: "from-amber-500 to-orange-600",
+    },
+    {
+      title: "Out of Stock",
+      value: state.outOfStock || "0",
+      icon: AlertTriangle,
+      color: "from-red-500 to-rose-600",
+    },
+    {
+      title: "Stock Value",
+      value: state.stockValue
+        ? `₹ ${state.stockValue.toLocaleString()}`
+        : "₹ 0",
+      icon: TrendingUp,
+      color: "from-green-500 to-emerald-600",
+    },
+  ];
+
   useEffect(() => {
     const loadData = async () => {
+      loadState();
       loadItems();
       refreshCart();
     };
@@ -111,7 +141,7 @@ export default function Inventory() {
         </div>
       ),
     },
-    { key: "reorderLevel", header: "Reorder", align: "center" },
+    // { key: "reorderLevel", header: "Reorder", align: "center" },
     {
       key: "sellingPrice",
       header: "Price",
@@ -127,18 +157,21 @@ export default function Inventory() {
       key: "status",
       header: "Status",
       render: (item: InventoryItem) => {
-        const status = {
+        const calculatedStatus = getStatus(item.stock, item.reorderLevel);
+
+        const statusClasses = {
           "in-stock": "bg-green-100 text-green-700 border-green-200",
           low: "bg-amber-100 text-amber-700 border-amber-200",
           out: "bg-red-100 text-red-700 border-red-200",
-        }[item.status];
+        }[calculatedStatus];
+
         return (
           <span
-            className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border ${status}`}
+            className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold border ${statusClasses}`}
           >
-            {item.status === "in-stock"
+            {calculatedStatus === "in-stock"
               ? "In Stock"
-              : item.status === "low"
+              : calculatedStatus === "low"
               ? "Low Stock"
               : "Out of Stock"}
           </span>
@@ -154,15 +187,11 @@ export default function Inventory() {
           ? cartItems.find((c) => c.inventoryId === item.id)
           : null;
 
+        const isOutOfStock = !(item ? item.stock > 0 : false);
         const qtyInCart = cartItem?.quantity ?? 0;
-        const availableStock = Math.max(0, item.stock - qtyInCart);
-        const isOutOfStock = availableStock <= 0;
 
         const handleIncrement = async () => {
-          if (isOutOfStock) {
-            toast.error("Out of stock!");
-            return;
-          }
+          if (isOutOfStock) return toast.error("Out of stock!");
 
           if (cartItem) {
             await window.electronAPI.cart.updateQuantity({
@@ -242,6 +271,15 @@ export default function Inventory() {
                 </button>
               </div>
             )}
+
+            {/* Update from Inventory */}
+            <button
+              onClick={() => handleItem(item, "edit")}
+              className="p-2 bg-blue-500/90 hover:bg-blue-600 text-white rounded-2xl shadow-lg hover:shadow-blue-500/30 transition-all hover:scale-110 active:scale-95"
+              title="Edit item"
+            >
+              <Edit className="w-4 h-4" />
+            </button>
 
             {/* Delete from Inventory */}
             <button

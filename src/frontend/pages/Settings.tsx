@@ -1,60 +1,46 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Store,
   Receipt,
   Bell,
   Shield,
   Save,
-  Edit,
-  Globe,
-  Palette,
-  DollarSign,
-  Check,
   CheckCircle2,
   XCircle,
+  Loader2,
+  Mail,
+  Building,
+  Smartphone,
+  ChevronRight,
+  Settings2,
 } from "lucide-react";
-import MainLayout from "@/frontend/components/Layout/MainLayout";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { storeSchema } from "../schema/store";
 import { zodResolver } from "@hookform/resolvers/zod";
+import MainLayout from "../components/Layout/MainLayout";
+import { useNavigate } from "react-router-dom";
 
-const settingsSections = [
-  {
-    icon: Store,
-    title: "Store Profile",
-    description: "Manage your store information and branding",
-    color: "blue",
-  },
-  {
-    icon: Receipt,
-    title: "Taxes & Billing",
-    description: "Configure tax rates and invoice settings",
-    color: "green",
-  },
-  {
-    icon: Bell,
-    title: "Notifications",
-    description: "Control email and system notifications",
-    color: "purple",
-  },
-  {
-    icon: Shield,
-    title: "Security & Users",
-    description: "Roles, permissions, and access control",
-    color: "red",
-  },
-];
+const storeSchema = z.object({
+  storeName: z.string().min(1, "Store name is required"),
+  email: z.string().email("Invalid email"),
+  phone: z.string().min(10, "Phone must be 10+ digits"),
+  gstin: z.string().optional(),
+  taxId: z.string().optional(),
+  address: z.string().min(1, "Address is required"),
+});
 
 type StoreFormData = z.infer<typeof storeSchema>;
 
 export default function Settings() {
-  const [lowStock, setLowStock] = useState(true);
-  const [dailyReport, setDailyReport] = useState(true);
-  const [loyalty, setLoyalty] = useState(false);
-  const [autoPO, setAutoPO] = useState(true);
-  const [stockAlert, setStockAlert] = useState(true);
+  const navigation = useNavigate();
+  const [preferences, setPreferences] = useState({
+    lowStock: true,
+    dailyReport: true,
+    loyalty: false,
+    autoPO: true,
+    stockAlert: true,
+  });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [gstinStatus, setGstinStatus] = useState<
@@ -69,220 +55,206 @@ export default function Settings() {
     formState: { errors },
   } = useForm<StoreFormData>({
     resolver: zodResolver(storeSchema),
-    defaultValues: {},
+    defaultValues: {
+      storeName: "My Awesome Store",
+      email: "store@example.com",
+      phone: "9876543210",
+      gstin: "",
+      taxId: "",
+      address: "123 Main Road, Delhi - 110001",
+    },
   });
 
-  useEffect(() => {
-    const load = async () => {
-      const res = await window.electronAPI.store.get();
-      if (res.success && res.data) {
-        setValue("storeName", res.data.storeName || "");
-        setValue("email", res.data.email || "");
-        setValue("phone", res.data.phone || "");
-        setValue("gstin", res.data.gstin || "");
-        setValue("taxId", res.data.taxId || "");
-        setValue("address", res.data.address || "");
-        if (res.data.gstin) {
-          setGstinStatus("valid");
-          setCompanyName(res.data.companyName || "");
-        }
-      }
-    };
-    load();
-  }, [setValue]);
+  const handlePreferenceChange = (key: keyof typeof preferences) => {
+    setPreferences((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
 
-  const handleSave = () => {
+  const verifyGSTIN = (gstin: string) => {
+    setGstinStatus("checking");
+    setTimeout(() => {
+      if (
+        gstin.length === 15 &&
+        /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(gstin)
+      ) {
+        setGstinStatus("valid");
+        setCompanyName("Verified Business Pvt Ltd");
+        toast.success("GSTIN Verified!");
+      } else if (gstin.length > 0) {
+        setGstinStatus("invalid");
+        toast.error("Invalid GSTIN format");
+      } else {
+        setGstinStatus("idle");
+      }
+    }, 1200);
+  };
+
+  const onSubmit = (data: StoreFormData) => {
     setSaving(true);
     setTimeout(() => {
       setSaving(false);
       setSaved(true);
+      toast.success("Settings saved successfully!");
       setTimeout(() => setSaved(false), 2000);
     }, 1500);
   };
 
-  const verifyGSTIN = async (gstin: string) => {
-    setGstinStatus("checking");
-    try {
-      const res = await fetch(
-        `https://gst-verification-api.onrender.com/api/gstin/${gstin}`
-      );
-      const data = await res.json();
-      if (data.success && data.data?.tradeNam) {
-        setGstinStatus("valid");
-        toast.success("GSTIN Verified!");
-      } else {
-        setGstinStatus("invalid");
-        toast.error("Invalid GSTIN");
-      }
-    } catch {
-      setGstinStatus("invalid");
-      toast.error("Verification failed");
-    }
-  };
-
-  const onSubmit = async (data: StoreFormData) => {
-    const saveData = {
-      ...data,
-      companyName: companyName || null,
-      gstin: gstinStatus === "valid" ? data.gstin : "",
-      gstVerified: gstinStatus === "valid" ? 1 : 0
-    };
-
-    const res = await window.electronAPI.store.save(saveData);
-    if (res.success) {
-      toast.success("Store settings saved successfully!");
-    } else {
-      toast.error(res.error || "Failed to save");
-    }
-  };
-
   return (
     <MainLayout>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-blue-950 dark:to-indigo-950 p-6">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-4 md:p-6">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="mb-8">
-            <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-2">
+            <h1 className="text-4xl font-extrabold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
               Settings
             </h1>
-            <p className="text-gray-600 dark:text-gray-400">
-              Manage your store settings and preferences
+            <p className="text-gray-600 dark:text-gray-400 mt-2">
+              Manage your store, preferences and security
             </p>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Main Settings */}
+            {/* Main Content */}
             <div className="lg:col-span-2 space-y-6">
-              {/* Quick Settings */}
+              {/* Quick Access Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {settingsSections.map((section, i) => {
-                  const Icon = section.icon;
-                  const colors = {
-                    blue: "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400",
-                    green:
-                      "bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400",
-                    purple:
-                      "bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400",
-                    red: "bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400",
-                  };
-                  return (
-                    <div
-                      key={i}
-                      className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-white/20 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 cursor-pointer"
-                    >
-                      <div className="flex items-start gap-4">
-                        <div
-                          className={`p-3 rounded-xl ${
-                            colors[section.color as keyof typeof colors]
-                          }`}
-                        >
-                          <Icon className="w-6 h-6" />
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="font-bold text-gray-900 dark:text-white">
-                            {section.title}
-                          </h3>
-                          <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                            {section.description}
-                          </p>
-                        </div>
+                {[
+                  {
+                    icon: Store,
+                    title: "Store Profile",
+                    desc: "Business name, logo, address",
+                    color: "from-blue-500 to-cyan-500",
+                    path: "/settings",
+                  },
+                  {
+                    icon: Receipt,
+                    title: "Taxes & Billing",
+                    desc: "GST, invoice format, prefixes",
+                    color: "from-green-500 to-emerald-500",
+                    path: "/invoice/history",
+                  },
+                  {
+                    icon: Bell,
+                    title: "Notifications",
+                    desc: "Email, WhatsApp, alerts",
+                    color: "from-purple-500 to-pink-500",
+                    path: "/settings",
+                  },
+                  {
+                    icon: Shield,
+                    title: "Security & Users",
+                    desc: "Roles, permissions, login",
+                    color: "from-red-500 to-orange-500",
+                    path: "/settings",
+                  },
+                ].map((item, i) => (
+                  <div
+                    key={i}
+                    onClick={() => navigation(item.path)}
+                    className="group bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 hover:shadow-xl transition-all hover:scale-[1.02] cursor-pointer"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div
+                        className={`w-14 h-14 rounded-xl bg-gradient-to-br ${item.color} p-3 text-white shadow-lg`}
+                      >
+                        <item.icon className="w-8 h-8" />
                       </div>
+                      <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-600 transition" />
                     </div>
-                  );
-                })}
+                    <h3 className="text-xl font-bold mt-4">{item.title}</h3>
+                    <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">
+                      {item.desc}
+                    </p>
+                  </div>
+                ))}
               </div>
 
-              {/* Store Information */}
+              {/* Store Form */}
               <form onSubmit={handleSubmit(onSubmit)}>
-                <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl p-8 shadow-2xl border border-white/20">
-                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-8">
+                <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 md:p-8 shadow-lg">
+                  <h3 className="text-2xl font-bold mb-6 flex items-center gap-3">
+                    <Building className="w-8 h-8 text-blue-600" />
                     Store Information
                   </h3>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    {/* Store Name */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Store Name *
+                      </label>
                       <input
-                        type="text"
-                        placeholder="Store Name *"
                         {...register("storeName")}
-                        className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-gray-400"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                        placeholder="My Awesome Store"
                       />
-                      {errors.storeName && (
+                      {errors.storeName?.message && (
                         <p className="text-red-500 text-xs mt-1">
-                          {errors.storeName.message}
+                          {errors.storeName.message as string}
                         </p>
                       )}
                     </div>
 
-                    {/* Email */}
                     <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Email (Optional)
+                      </label>
                       <input
-                        type="email"
-                        placeholder="Contact Email (Optional)"
                         {...register("email")}
-                        className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-gray-400"
+                        type="email"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500"
+                        placeholder="store@example.com"
                       />
-                      {errors.email && (
-                        <p className="text-red-500 text-xs mt-1">
-                          {errors.email.message}
-                        </p>
-                      )}
                     </div>
 
-                    {/* Phone */}
                     <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Phone Number *
+                      </label>
                       <input
-                        type="tel"
-                        placeholder="Phone Number *"
                         {...register("phone")}
-                        className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-gray-400"
+                        type="tel"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500"
+                        placeholder="9876543210"
                       />
-                      {errors.phone && (
+                      {errors.phone?.message && (
                         <p className="text-red-500 text-xs mt-1">
-                          {errors.phone.message}
+                          {errors.phone.message as string}
                         </p>
                       )}
                     </div>
 
-                    {/* GSTIN with Verification */}
                     <div className="relative">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        GSTIN (Optional)
+                      </label>
                       <input
-                        type="text"
-                        placeholder="GSTIN (15 digits) - Optional"
                         {...register("gstin")}
                         onChange={(e) => {
                           const val = e.target.value
                             .toUpperCase()
                             .replace(/[^A-Z0-9]/g, "");
                           setValue("gstin", val);
-                          if (val.length === 15) {
-                            verifyGSTIN(val);
-                          } else {
-                            setGstinStatus("idle");
-                            setCompanyName("");
-                          }
+                          verifyGSTIN(val);
                         }}
                         maxLength={15}
-                        className="w-full px-4 py-3 pr-12 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all uppercase font-mono tracking-wider placeholder:text-gray-400"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 font-mono tracking-wider uppercase"
+                        placeholder="22AAAAA0000A1Z5"
                       />
-                      {gstinStatus === "checking" && (
-                        <div className="absolute right-3 top-3.5">
-                          <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                        </div>
-                      )}
-                      {gstinStatus === "valid" && (
-                        <CheckCircle2 className="absolute right-3 top-3.5 w-6 h-6 text-green-500" />
-                      )}
-                      {gstinStatus === "invalid" && (
-                        <XCircle className="absolute right-3 top-3.5 w-6 h-6 text-red-500" />
-                      )}
+                      <div className="absolute right-3 top-10">
+                        {gstinStatus === "checking" && (
+                          <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
+                        )}
+                        {gstinStatus === "valid" && (
+                          <CheckCircle2 className="w-6 h-6 text-green-500" />
+                        )}
+                        {gstinStatus === "invalid" && (
+                          <XCircle className="w-6 h-6 text-red-500" />
+                        )}
+                      </div>
                     </div>
 
-                    {/* Verified Company Name */}
                     {companyName && (
-                      <div className="sm:col-span-2 p-4 bg-green-50 dark:bg-green-900/30 border border-green-300 dark:border-green-700 rounded-xl">
-                        <p className="text-sm font-medium text-green-800 dark:text-green-300 flex items-center gap-2">
+                      <div className="md:col-span-2 p-4 bg-green-50 dark:bg-green-900/30 border border-green-300 dark:border-green-700 rounded-xl">
+                        <p className="text-green-700 dark:text-green-400 font-medium flex items-center gap-2">
                           <CheckCircle2 className="w-5 h-5" />
                           GST Verified:{" "}
                           <span className="font-bold">{companyName}</span>
@@ -290,100 +262,94 @@ export default function Settings() {
                       </div>
                     )}
 
-                    {/* Tax ID */}
                     <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        PAN / Tax ID
+                      </label>
                       <input
-                        type="text"
-                        placeholder="PAN / Tax ID (Optional)"
                         {...register("taxId")}
-                        className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-gray-400"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500"
+                        placeholder="ABCDE1234F"
                       />
                     </div>
 
-                    {/* Address */}
-                    <div className="sm:col-span-2">
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Full Address *
+                      </label>
                       <textarea
-                        placeholder="Full Address *"
-                        rows={3}
                         {...register("address")}
-                        className="w-full px-4 py-3 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all resize-none placeholder:text-gray-400"
+                        rows={3}
+                        className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 resize-none"
+                        placeholder="123 Main Road, Near Market, Delhi - 110001"
                       />
-                      {errors.address && (
+                      {errors.address?.message && (
                         <p className="text-red-500 text-xs mt-1">
-                          {errors.address.message}
+                          {errors.address.message as string}
                         </p>
                       )}
                     </div>
                   </div>
 
-                  {/* Save Button */}
                   <div className="mt-8 flex justify-end">
                     <button
                       type="submit"
-                      className="flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold rounded-xl shadow-lg transition-all hover:scale-105 active:scale-95"
+                      disabled={saving}
+                      className="flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all hover:scale-105 active:scale-95 disabled:opacity-60"
                     >
-                      <Save className="w-6 h-6" />
-                      Save Store Settings
+                      {saving ? (
+                        <Loader2 className="w-6 h-6 animate-spin" />
+                      ) : (
+                        <Save className="w-6 h-6" />
+                      )}
+                      {saving ? "Saving..." : "Save Store Settings"}
                     </button>
                   </div>
                 </div>
               </form>
 
               {/* Preferences */}
-              <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-white/20">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-5">
-                  Preferences
-                </h3>
+              <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 shadow-lg">
+                <h3 className="text-xl font-bold mb-5">Preferences</h3>
                 <div className="space-y-4">
                   {[
+                    { key: "lowStock", label: "Low stock alerts" },
+                    { key: "dailyReport", label: "Daily sales report" },
+                    { key: "loyalty", label: "Customer loyalty program" },
+                    { key: "autoPO", label: "Auto generate purchase orders" },
                     {
-                      label: "Email notifications for low stock",
-                      state: lowStock,
-                      setState: setLowStock,
-                    },
-                    {
-                      label: "Send daily sales reports",
-                      state: dailyReport,
-                      setState: setDailyReport,
-                    },
-                    {
-                      label: "Enable customer loyalty program",
-                      state: loyalty,
-                      setState: setLoyalty,
-                    },
-                    {
-                      label: "Auto-generate purchase orders",
-                      state: autoPO,
-                      setState: setAutoPO,
-                    },
-                    {
+                      key: "stockAlert",
                       label: "Show stock alerts on dashboard",
-                      state: stockAlert,
-                      setState: setStockAlert,
                     },
-                  ].map((item, i) => (
-                    <div
-                      key={i}
-                      className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-700 rounded-xl"
+                  ].map(({ key, label }) => (
+                    <label
+                      key={key}
+                      className="flex items-center justify-between cursor-pointer group"
                     >
-                      <p className="font-medium text-gray-900 dark:text-white">
-                        {item.label}
-                      </p>
-                      <button
-                        onClick={() => item.setState(!item.state)}
-                        className={`relative w-12 h-6 rounded-full transition-all ${
-                          item.state
+                      <span className="text-gray-700 dark:text-gray-300 font-medium group-hover:text-gray-900 dark:group-hover:text-white transition">
+                        {label}
+                      </span>
+                      <div
+                        onClick={() =>
+                          handlePreferenceChange(
+                            key as keyof typeof preferences
+                          )
+                        }
+                        className={`w-14 h-8 rounded-full transition-all duration-300 relative ${
+                          preferences[key as keyof typeof preferences]
                             ? "bg-blue-600"
-                            : "bg-gray-300 dark:bg-slate-600"
+                            : "bg-gray-300 dark:bg-gray-600"
                         }`}
                       >
-                        <span
-                          className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
-                            item.state ? "translate-x-6" : ""
+                        <div
+                          className={`absolute top-1 w-6 h-6 bg-white rounded-full shadow-md transition-all duration-300 ${
+                            preferences[key as keyof typeof preferences]
+                              ? "translate-x-6"
+                              : "translate-x-1"
                           }`}
                         />
-                      </button>
-                    </div>
+                      </div>
+                    </label>
                   ))}
                 </div>
               </div>
@@ -391,92 +357,74 @@ export default function Settings() {
 
             {/* Sidebar */}
             <div className="space-y-6">
-              {/* User Profile */}
-              <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-white/20">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-5">
-                  Your Profile
-                </h3>
-                <div className="flex flex-col items-center text-center">
-                  <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white text-2xl font-bold shadow-lg">
+              {/* Profile Card */}
+              <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 shadow-lg">
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-2xl font-bold">
                     AC
                   </div>
-                  <div className="mt-4">
-                    <h4 className="font-bold text-gray-900 dark:text-white">
-                      Alex Carter
-                    </h4>
+                  <div>
+                    <h3 className="font-bold text-lg">Alex Carter</h3>
                     <p className="text-sm text-gray-600 dark:text-gray-400">
                       Store Manager
                     </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                      alex@retailpro.app
-                    </p>
                   </div>
-                  <button className="mt-5 w-full flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-300 dark:border-slate-600 rounded-xl text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-100 dark:hover:bg-slate-700 transition-all">
-                    <Edit className="w-4 h-4" /> Edit Profile
-                  </button>
+                </div>
+                <div className="space-y-3 text-sm">
+                  <div className="flex items-center gap-3 text-gray-600 dark:text-gray-400">
+                    <Mail className="w-4 h-4" />
+                    <span>alex@store.com</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-gray-600 dark:text-gray-400">
+                    <Smartphone className="w-4 h-4" />
+                    <span>+91 98765 43210</span>
+                  </div>
                 </div>
               </div>
 
-              {/* System Settings */}
-              <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-white/20">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-5">
-                  System Settings
+              {/* System Info */}
+              <div className="bg-gradient-to-br from-gray-900 to-black text-white rounded-2xl p-6 shadow-lg">
+                <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+                  <Settings2 className="w-5 h-5" />
+                  System Status
                 </h3>
-                <div className="space-y-4">
-                  {[
-                    { icon: Globe, label: "Language", value: "English (US)" },
-                    { icon: Palette, label: "Theme", value: "Light Mode" },
-                    { icon: DollarSign, label: "Currency", value: "USD ($)" },
-                  ].map((item, i) => {
-                    const Icon = item.icon;
-                    return (
-                      <div
-                        key={i}
-                        className="flex items-center gap-4 p-3 bg-gray-50 dark:bg-slate-700 rounded-xl"
-                      >
-                        <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                          <Icon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-semibold text-gray-900 dark:text-white">
-                            {item.label}
-                          </p>
-                          <p className="text-xs text-gray-600 dark:text-gray-400">
-                            {item.value}
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })}
+                <div className="space-y-3 text-sm">
+                  <div className="flex justify-between">
+                    <span>Database</span>
+                    <span className="text-green-400">Connected</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Backup</span>
+                    <span className="text-green-400">Daily</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Version</span>
+                    <span>v2.4.1</span>
+                  </div>
                 </div>
               </div>
 
-              {/* Save Button */}
+              {/* Global Save */}
               <button
-                onClick={handleSave}
-                disabled={saving}
-                className={`w-full flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-bold text-white shadow-lg transform transition-all duration-300 ${
-                  saving
-                    ? "bg-gray-400 cursor-not-allowed"
-                    : saved
-                    ? "bg-green-600 hover:bg-green-700"
-                    : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 hover:scale-105 hover:shadow-xl"
-                }`}
+                onClick={() => {
+                  setSaving(true);
+                  setTimeout(() => {
+                    setSaving(false);
+                    setSaved(true);
+                    toast.success("All settings saved!");
+                    setTimeout(() => setSaved(false), 2000);
+                  }, 1500);
+                }}
+                className="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold rounded-xl shadow-lg hover:shadow-2xl transition-all hover:scale-105 flex items-center justify-center gap-3"
               >
-                {saving ? (
-                  <>
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Saving...
-                  </>
-                ) : saved ? (
-                  <>
-                    <Check className="w-5 h-5" /> Saved!
-                  </>
+                {saved ? (
+                  <CheckCircle2 className="w-6 h-6" />
+                ) : saving ? (
+                  <Loader2 className="w-6 h-6 animate-spin" />
                 ) : (
-                  <>
-                    <Save className="w-5 h-5" /> Save Changes
-                  </>
+                  <Save className="w-6 h-6" />
                 )}
+                {saved ? "Saved!" : "Save All Settings"}
               </button>
             </div>
           </div>

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   RefreshCw,
   Save,
@@ -23,6 +23,8 @@ import { InventoryItem } from "../types/inventry";
 import { calculateGSTForUnit, generateSKU } from "../helper/helper";
 
 export default function AddProduct() {
+  const location = useLocation();
+  const editData = location.state?.editData || null;
   const {
     register,
     handleSubmit,
@@ -57,13 +59,24 @@ export default function AddProduct() {
 
   const navigation = useNavigate();
 
+  useEffect(() => {
+    if (editData) {
+      Object.keys(editData).forEach((key) => {
+        setValue(key as any, editData[key]);
+      });
+
+      if (editData.imageUrl) {
+        setImagePreview(editData.imageUrl);
+      }
+      if (editData.purchaseDate) setPurchaseDate(editData.purchaseDate);
+      if (editData.expiryDate) setExpiryDate(editData.expiryDate);
+    }
+  }, [editData, setValue]);
+
   // local UI state
   const stock = watch("stock") || 0;
   const reorderLevel = watch("reorderLevel") || 0;
   const lowStockAlert = watch("lowStockAlert");
-  const sellingPrice = watch("sellingPrice") || 0;
-  const gstRate = watch("gstRate") ?? 0;
-  const isGstIncluded = watch("isGstIncluded") ?? true;
 
   const [purchaseDate, setPurchaseDate] = useState<string>(
     new Date().toISOString().slice(0, 10)
@@ -193,9 +206,18 @@ export default function AddProduct() {
     } as any;
 
     try {
-      const result = await window.electronAPI.inventory.add(finalData);
+      let result;
+      if (data.id) {
+        result = await window.electronAPI.inventory.update(data.id, finalData);
+      } else {
+        result = await window.electronAPI.inventory.add(finalData);
+      }
       if (result?.success) {
-        toast.success("Product added successfully");
+        toast.success(
+          data.id
+            ? "Product updated successfully"
+            : "Product added successfully"
+        );
         handleReset();
         navigation("/inventory");
       } else {
@@ -206,11 +228,6 @@ export default function AddProduct() {
     }
   };
 
-  // const totalPrice = isGstIncluded
-  //   ? sellingPrice
-  //   : sellingPrice + (sellingPrice * gstRate) / 100;
-
-  // stock status helper
   const stockStatus =
     stock <= 0
       ? "Out of stock"
@@ -251,7 +268,8 @@ export default function AddProduct() {
                   type="submit"
                   className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold px-5 py-2.5 rounded-xl shadow-lg transform transition-all duration-200 hover:scale-105 hover:shadow-xl"
                 >
-                  <Save className="w-5 h-5" /> Save Product
+                  <Save className="w-5 h-5" />{" "}
+                  {watch("id") ? "Update Product" : "Save Product"}
                 </button>
               </div>
             </div>
@@ -432,7 +450,7 @@ export default function AddProduct() {
                         />
                         <Info
                           className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"
-                          title="Minimum stock to trigger alert"
+                          // title="Minimum stock to trigger alert"
                         />
                       </div>
                     </div>

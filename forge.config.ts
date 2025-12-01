@@ -1,20 +1,42 @@
-import type { ForgeConfig } from '@electron-forge/shared-types';
-import { MakerSquirrel } from '@electron-forge/maker-squirrel';
-import { MakerZIP } from '@electron-forge/maker-zip';
-import { MakerDeb } from '@electron-forge/maker-deb';
-import { MakerRpm } from '@electron-forge/maker-rpm';
-import { AutoUnpackNativesPlugin } from '@electron-forge/plugin-auto-unpack-natives';
-import { WebpackPlugin } from '@electron-forge/plugin-webpack';
+import type { ForgeConfig } from "@electron-forge/shared-types";
+import { MakerSquirrel } from "@electron-forge/maker-squirrel";
+import { MakerZIP } from "@electron-forge/maker-zip";
+import { MakerDeb } from "@electron-forge/maker-deb";
+import { MakerRpm } from "@electron-forge/maker-rpm";
+import { AutoUnpackNativesPlugin } from "@electron-forge/plugin-auto-unpack-natives";
+import { WebpackPlugin } from "@electron-forge/plugin-webpack";
 
-import { mainConfig } from './webpack.main.config';
-import { rendererConfig } from './webpack.renderer.config';
+import { mainConfig } from "./webpack.main.config";
+import { rendererConfig } from "./webpack.renderer.config";
 
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
+    name: "Retailer",
+    icon: "./assets/icon",
   },
   rebuildConfig: {},
-  makers: [new MakerSquirrel({}), new MakerZIP({}, ['darwin']), new MakerRpm({}), new MakerDeb({})],
+  makers: [
+    new MakerSquirrel({
+      setupIcon: "./assets/icon.ico",
+    }),
+    new MakerZIP(
+      {
+        // Mac: icon already handled via packagerConfig
+      },
+      ["darwin"]
+    ),
+    new MakerRpm({
+      options: {
+        icon: "./assets/icon.png",
+      },
+    }),
+    new MakerDeb({
+      options: {
+        icon: "./assets/icon.png",
+      },
+    }),
+  ],
   plugins: [
     new AutoUnpackNativesPlugin({}),
     new WebpackPlugin({
@@ -23,21 +45,13 @@ const config: ForgeConfig = {
         config: rendererConfig,
         entryPoints: [
           {
-            html: './src/index.html',
-            js: './src/renderer.ts',
-            name: 'main_window',
+            html: "./src/index.html",
+            js: "./src/renderer.ts",
+            name: "main_window",
             preload: {
-              js: './src/preload.ts',
+              js: "./src/preload.ts",
             },
           },
-          // {
-          //   html: './src/index.html',
-          //   js: './src/child-process/renderer.ts',
-          //   name: 'child_window',
-          //   preload: {
-          //     js: './src/preload.ts',
-          //   },
-          // },
         ],
       },
     }),

@@ -36,12 +36,59 @@ export const getDB = (): Database => {
   return dbInstance as Database;
 };
 
-// Initialize all tables (ek hi baar)
 export const initializeDatabase = async (): Promise<void> => {
   const db = getDB();
+  // addColumn("customers", "created_at", "TEXT").catch((err) => {
+  //   console.error("Error adding hsnCode column:", err);
+  // });
 
-  return new Promise<void>((resolve, reject) => {
+  // updateColumn("customers", "created_at", "datetime('now')").catch((err) => {
+  //   console.error("Error updating created_at column:", err);
+  // });
+  return new Promise<void>((resolve, _reject) => {
     db.serialize(() => {
+      // auth table
+      db.run(`
+        CREATE TABLE IF NOT EXISTS users (
+          id TEXT PRIMARY KEY, -- UUID
+
+          -- Business Info
+          businessName TEXT NOT NULL,
+          ownerName TEXT NOT NULL,
+          phone TEXT NOT NULL,
+          businessCategory TEXT NOT NULL,
+
+          -- Auth
+          email TEXT UNIQUE NOT NULL,
+          password TEXT NOT NULL,
+
+          -- Account Status
+          isActive BOOLEAN DEFAULT 1,
+          isTrial BOOLEAN DEFAULT 1,
+          trialEndsAt DATETIME DEFAULT (datetime('now', '+14 days')),
+          isEmailVerified BOOLEAN DEFAULT 0,
+
+          -- Security
+          failedLoginAttempts INTEGER DEFAULT 0,
+          lockedUntil DATETIME NULL,
+
+          -- Role & Permissions (Future mein multiple users ke liye)
+          role TEXT DEFAULT 'owner' CHECK(role IN ('owner', 'admin', 'cashier', 'viewer')),
+
+          -- App State
+          isFirstLogin BOOLEAN DEFAULT 1,
+          plan TEXT DEFAULT 'trial', -- trial, pro, enterprise
+          licenseKey TEXT NULL,
+
+          -- Timestamps
+          createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+
+        -- Ensure only ONE user (owner) exists
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_single_owner ON users ((1));
+      `);
+
       // Inventory Table
       db.run(`
         CREATE TABLE IF NOT EXISTS inventory (
@@ -59,6 +106,9 @@ export const initializeDatabase = async (): Promise<void> => {
           sellingPrice REAL NOT NULL,
           mrp REAL,
           discount REAL DEFAULT 0,
+          hsnCode TEXT,
+          gstAmount REAl DEFAULT 0,
+          taxableAmount REAL DEFAULT 0,
           gstRate REAL NOT NULL DEFAULT 0,
           gstType TEXT DEFAULT 'CGST_SGST',
           isGstIncluded INTEGER NOT NULL DEFAULT 1,
@@ -97,74 +147,89 @@ export const initializeDatabase = async (): Promise<void> => {
         );
       `);
 
+      // store settings
       db.run(`
         CREATE TABLE IF NOT EXISTS store_settings (
-          id INTEGER PRIMARY KEY CHECK (id = 1),
-          storeName TEXT NOT NULL DEFAULT 'My Store',
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          storeName TEXT NOT NULL,
+          ownerName TEXT,
+          phone TEXT,
           email TEXT,
-          phone TEXT NOT NULL DEFAULT '',
-          gstin TEXT UNIQUE,
-          companyName TEXT,
-          taxId TEXT,
-          address TEXT NOT NULL DEFAULT '',
-          logoUrl TEXT,
-          gstVerified INTEGER DEFAULT 0,
-          defaultCurrency TEXT NOT NULL DEFAULT 'INR',
-          defaultTaxRate REAL NOT NULL DEFAULT 18.0,
-          returnPolicy TEXT,
-          createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
+          address TEXT,
+          gstNumber TEXT,
+          stateCode TEXT, -- e.g. RJ = 08
+          isGstEnabled INTEGER DEFAULT 1, -- 1 = GST billing, 0 = NO GST
+          gstIncludedDefault INTEGER DEFAULT 0, -- MRP included GST hota hai = 1
+          invoicePrefix TEXT DEFAULT 'INV',
+          invoiceStartNumber INTEGER DEFAULT 1,
+          createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
       `);
 
+      // Invoices Table
       db.run(`
         CREATE TABLE IF NOT EXISTS invoices (
-          id TEXT PRIMARY KEY,                   -- UUID
-          invoiceNumber TEXT UNIQUE,             -- INV-2025-000123
-          date TEXT,                             -- ISO date
-
+          id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
+          invoiceNumber TEXT UNIQUE,
+          date TEXT,
+          customerId TEXT,
           customerName TEXT,
           customerPhone TEXT,
-
-          paymentMethod TEXT,                    -- Cash, Card, UPI
-          paymentRef TEXT,                       -- UPI ID / Txn ID / Card last 4
+          billingAddress TEXT,
+          shippingAddress TEXT,
+          transportDetails TEXT, -- JSON string (vehicle,lr,transportName)
+          paymentMeta TEXT,      -- JSON string (payments array)
           subTotal REAL,
           discount REAL,
-          discountType TEXT,                     -- percent | flat
+          discountType TEXT,
           taxableAmount REAL,
           gstAmount REAL,
           cgst REAL,
           sgst REAL,
           igst REAL,
-
           roundOff REAL,
           grandTotal REAL,
-
-          cashReceived REAL,                     -- Only for cash
-          changeReturned REAL,
-
+          totalQty REAL,
+          status TEXT DEFAULT 'Due' CHECK (status IN ('Paid', 'Partial', 'Due')),  -- Auto-set based on due_amount,
+          totalItems INTEGER,
+          cashierName TEXT,
           storeId TEXT,
-          createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+          paidAmount REAL DEFAULT 0,
+          dueAmount REAL DEFAULT 0,
+          paymentStatus TEXT DEFAULT 'Paid',
+          notes TEXT,
+          footerMessage TEXT,
+          createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          -- FOREIGN KEY(customerId) REFERENCES customers(id)
         );
       `);
 
+      // Invoice Items Table
       db.run(`
         CREATE TABLE IF NOT EXISTS invoice_items (
-          id TEXT PRIMARY KEY,
+          id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
           invoiceId TEXT,
           inventoryId TEXT,
           productName TEXT,
+          hsnCode TEXT,
+          sku TEXT,
+          unit TEXT,
           quantity REAL,
-          price REAL,
+          unitPrice REAL,
+          lineDiscount REAL DEFAULT 0,
           taxableAmount REAL,
           gstRate REAL,
           gstAmount REAL,
-          lineTotal REAL,
-
-          FOREIGN KEY(invoiceId) REFERENCES invoices(id)
+          cgst REAL,
+          sgst REAL,
+          igst REAL,
+          lineTotal REAL, -- taxable + gst - discount
+          FOREIGN KEY(invoiceId) REFERENCES invoices(id) ON DELETE CASCADE
         );
       `);
 
+      // Invoice Meta Table
       db.run(`
         CREATE TABLE IF NOT EXISTS invoice_meta (
           id TEXT PRIMARY KEY,
@@ -172,8 +237,47 @@ export const initializeDatabase = async (): Promise<void> => {
           cashierName TEXT,
           notes TEXT,
           footerMessage TEXT,
-
           FOREIGN KEY(invoiceId) REFERENCES invoices(id)
+        );
+      `);
+
+      // Custmer details
+      db.run(`
+        CREATE TABLE IF NOT EXISTS customers (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          phone TEXT UNIQUE NOT NULL,
+          address TEXT NOT NULL,
+          created_at TEXT DEFAULT (datetime('now'))
+        );
+      `);
+
+      // Customer Ledger Table
+      db.run(`
+        CREATE TABLE IF NOT EXISTS customer_ledger (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          customer_id INTEGER NOT NULL,
+          invoice_id TEXT,
+          type TEXT NOT NULL,
+          amount REAL NOT NULL,
+          balance REAL NOT NULL,       -- Running balance after this entry (for easy querying)
+          date TEXT NOT NULL DEFAULT (datetime('now')),
+          reference TEXT,
+          notes TEXT,
+          FOREIGN KEY(customer_id) REFERENCES customers(id)
+        );
+      `);
+
+      // Suppliers Table
+      db.run(`
+        CREATE TABLE IF NOT EXISTS customers (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          phone TEXT,
+          email TEXT,
+          address TEXT,
+          gstNumber TEXT,
+          createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
         );
       `);
 
@@ -201,7 +305,7 @@ export const initializeDatabase = async (): Promise<void> => {
       // Triggers
       db.run(
         `
-        CREATE TRIGGER IF NOT EXISTS trg_inventory_update 
+        CREATE TRIGGER IF NOT EXISTS trg_inventory_update
         AFTER UPDATE ON inventory
         BEGIN
           UPDATE inventory SET updatedAt = CURRENT_TIMESTAMP WHERE id = NEW.id;
@@ -212,7 +316,7 @@ export const initializeDatabase = async (): Promise<void> => {
 
       db.run(
         `
-        CREATE TRIGGER IF NOT EXISTS trg_cart_update 
+        CREATE TRIGGER IF NOT EXISTS trg_cart_update
         AFTER UPDATE ON cart
         BEGIN
           UPDATE cart SET updatedAt = CURRENT_TIMESTAMP WHERE id = NEW.id;
@@ -231,5 +335,44 @@ export const initializeDatabase = async (): Promise<void> => {
       `),
         checkComplete();
     });
+  });
+};
+
+export const addColumn = (
+  table: string,
+  column: string,
+  definition: string
+): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    const db = getDB();
+    db.run(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`, (err) => {
+      if (err && !err.message.includes("duplicate column name")) {
+        reject(err);
+      } else {
+        if (!err) console.log(`Added column: ${column}`);
+        resolve();
+      }
+    });
+  });
+};
+
+export const updateColumn = (
+  table: string,
+  column: string,
+  definition: string
+): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    const db = getDB();
+    db.run(
+      `UPDATE ${table} SET ${column} = ${definition} WHERE created_at IS NULL OR created_at = ''`,
+      (err) => {
+        if (err) {
+          reject(err);
+        } else {
+          console.log(`Updated column: ${column}`);
+          resolve();
+        }
+      }
+    );
   });
 };

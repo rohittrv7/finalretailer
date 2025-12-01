@@ -1,14 +1,14 @@
-import { configureStore } from '@reduxjs/toolkit';
-import { rootApiSlice } from './rootApiSlice';
-import { quickAddSlice } from './slices/quickAddSlice';
+import { configureStore } from "@reduxjs/toolkit";
+import { userSlice } from "./slices/userSlice";
 
 export const store = configureStore({
-    reducer: {
-        quickAdd: quickAddSlice.reducer,
-        [rootApiSlice.reducerPath]: rootApiSlice.reducer,
-    },
-    middleware: (getDefaultMiddleware) =>
-        getDefaultMiddleware().concat(rootApiSlice.middleware),
+  reducer: {
+    user: userSlice.reducer,
+  },
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware({
+      serializableCheck: false,
+    }),
 });
 
 export type RootState = ReturnType<typeof store.getState>;
