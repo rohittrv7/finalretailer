@@ -6,7 +6,7 @@ import {
   ArrowDown,
   ChevronLeft,
   ChevronRight,
-  Table as TableIcon,
+  // Table as TableIcon,
   Plus,
   Search,
 } from "lucide-react";
