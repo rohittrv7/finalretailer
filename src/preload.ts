@@ -12,6 +12,11 @@ const electronAPI = {
     setupBusiness: (data: any) =>
       ipcRenderer.invoke("app-setup-business", data),
     getUser: () => ipcRenderer.invoke("app-get-user"),
+    // This is a secure way to simulate a purchase without exposing license generation to the frontend.
+    simulatePurchase: (
+      planName: "Starter" | "Standard" | "Pro",
+      billingCycle: "monthly" | "yearly"
+    ) => ipcRenderer.invoke("license:simulatePurchase", planName, billingCycle),
   },
   inventory: {
     add: (item: InventoryItem) => ipcRenderer.invoke("inventory:add", item),
@@ -26,6 +31,14 @@ const electronAPI = {
     delete: (id: string) => ipcRenderer.invoke("inventory:delete", id),
 
     state: () => ipcRenderer.invoke("inventory:state"),
+  },
+
+  // Dashboard APIs
+  dashboard: {
+    // Full dashboard payload (today + months + lowStock + expiring)
+    get: () => ipcRenderer.invoke("dashboard:get"),
+    // Top categories & top products lists for dashboard cards/tables
+    getTopLists: () => ipcRenderer.invoke("dashboard:topLists"),
   },
 
   cart: {
@@ -51,7 +64,35 @@ const electronAPI = {
 
   store: {
     get: () => ipcRenderer.invoke("store:get"),
+    getBillingSettings: () => ipcRenderer.invoke("store:billingSettings"),
+    getNotifications: () => ipcRenderer.invoke("store:notifications"),
+    getPreference: () => ipcRenderer.invoke("store:preference"),
     save: (settings: StoreInfo) => ipcRenderer.invoke("store:save", settings),
+    updateNotifications: (settings: any) =>
+      ipcRenderer.invoke("store:updateNotifications", settings),
+    updatePreference: (settings: any) =>
+      ipcRenderer.invoke("store:updatePreference", settings),
+    updateBillingSettings: (settings: any) =>
+      ipcRenderer.invoke("store:updateBillingSettings", settings),
+
+    getStoreSettings: () => ipcRenderer.invoke("store:getStoreSettings"),
+
+    updateStoreSettings: (payload: {
+      storeName?: string;
+      companyName?: string;
+      ownerName?: string;
+      phone?: string;
+      email?: string;
+      address?: string;
+
+      gstEnabled?: number;
+      gstNumber?: string;
+      stateCode?: string;
+
+      currency?: string;
+      financialYear?: string;
+      storeImageUrl?: string;
+    }) => ipcRenderer.invoke("store:updateStoreSettings", payload),
   },
 
   invoice: {

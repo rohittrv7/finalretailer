@@ -46,7 +46,6 @@ export default function Customers() {
     }
   };
 
-  console.log("object=================", customerDetail);
   useEffect(() => {
     loadCustomers();
   }, []);
@@ -107,11 +106,11 @@ export default function Customers() {
       align: "right",
       sortable: true,
       render: (customer) => (
-        <div className="flex items-center justify-end gap-2">
-          <IndianRupee className="w-4 h-4 text-orange-500" />
+        <div className="flex items-center justify-end gap-1">
+          <IndianRupee className="w-4 h-4 text-red-500" />
           {customer.dueAmount > 0 ? (
             <span className="font-bold text-red-600">
-              ₹{customer.dueAmount.toFixed(2)}
+              {customer.dueAmount.toFixed(2)}
             </span>
           ) : (
             <span className="font-medium text-green-600">₹0.00</span>
@@ -149,7 +148,7 @@ export default function Customers() {
             setIsOpen(true);
             detailCustomer(customer.id.toString());
           }}
-          className="p-2 bg-blue-100 dark:bg-blue-900/50 hover:bg-blue-200 dark:hover:bg-blue-800 rounded-lg transition"
+          className="p-2 cursor-pointer bg-blue-100 dark:bg-blue-900/50 hover:bg-blue-200 dark:hover:bg-blue-800 rounded-lg transition"
         >
           <Eye className="w-4 h-4 text-blue-600 dark:text-blue-400" />
         </button>
@@ -195,7 +194,7 @@ export default function Customers() {
       <CustomerDetailsModal
         isOpen={isOpen}
         setIsOpen={setIsOpen}
-        data={customerDetail} 
+        data={customerDetail}
       />
     </MainLayout>
   );

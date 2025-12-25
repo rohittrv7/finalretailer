@@ -1,15 +1,38 @@
 import { ipcMain } from "electron";
+import jwt from "jsonwebtoken";
 // eslint-disable-next-line import/no-unresolved
 import { InventoryItem } from "@/frontend/types/inventry";
 import { getDB } from "../database/db";
-import { CartItem } from "@/frontend/types/cart";
+// import { CartItem } from "@/frontend/types/cart";
 import { Database } from "sqlite3";
 import {
-  getCurrentUser,
+  getUser,
   isFirstTimeSetup,
-  isSetupComplete,
+  checkSetupComplete,
   setupBusiness,
+  updateUser,
 } from "../service/authService";
+// import { checkUserEntitlements } from "../services/licenseService";
+import { UserProfile } from "../types/user";
+import { checkUserEntitlements } from "../database/licenseService";
+
+// This secret should NOT be in the renderer process.
+const JWT_SECRET = "your-super-secret-for-license-keys-that-is-very-long";
+
+// This is a main-process-only utility function.
+// It is NOT exported and NOT available to the renderer process.
+const generateLicense = (
+  plan: "starter" | "standard" | "pro",
+  durationInDays?: number
+): string => {
+  const payload: { plan: string; expiresAt?: string } = { plan };
+  if (plan !== "starter" && durationInDays) {
+    const expiryDate = new Date();
+    expiryDate.setDate(expiryDate.getDate() + durationInDays);
+    payload.expiresAt = expiryDate.toISOString();
+  }
+  return jwt.sign(payload, JWT_SECRET);
+};
 
 export function calculateTotals(
   unitPrice: number,
@@ -63,25 +86,61 @@ export function calculateTotals(
   };
 }
 
-function pad(n: number, len = 6) {
-  return String(n).padStart(len, "0");
-}
-
 async function generateInvoiceNumber(db: Database): Promise<string> {
-  const year = new Date().getFullYear();
-  return new Promise((resolve, reject) => {
-    db.get(
-      `SELECT invoiceNumber FROM invoices WHERE invoiceNumber LIKE ? ORDER BY createdAt DESC LIMIT 1`,
-      [`INV-${year}-%`],
-      (err: any, row: any) => {
-        if (err) return reject(err);
-        if (!row) return resolve(`INV-${year}-${pad(1)}`);
-        const last = row.invoiceNumber as string; // INV-2025-000123
-        const parts = last.split("-");
-        const lastNum = Number(parts[2] || "0");
-        resolve(`INV-${year}-${pad(lastNum + 1)}`);
-      }
-    );
+  const currentYear = new Date().getFullYear();
+
+  return new Promise<string>((resolve, reject) => {
+    db.serialize(() => {
+      // Step 1: Billing settings fetch karo (sirf ek row assume kar rahe hain)
+      db.get(
+        `SELECT invoicePrefix, invoiceStartNumber FROM billingSettings LIMIT 1`,
+        [],
+        (err: any, settingsRow: any) => {
+          if (err) return reject(err);
+
+          const prefix = (settingsRow?.invoicePrefix || "INV-").trim();
+          const startNum = Number(settingsRow?.invoiceStartNumber || 1);
+
+          if (!prefix) {
+            return reject(
+              new Error("Invoice prefix not configured in billing settings")
+            );
+          }
+
+          // Step 2: Is saal ka last invoice dhundho
+          db.get(
+            `SELECT invoiceNumber 
+             FROM invoices 
+             WHERE invoiceNumber LIKE ? 
+             ORDER BY createdAt DESC 
+             LIMIT 1`,
+            [`${prefix}${currentYear}-%`],
+            (err: any, row: any) => {
+              if (err) return reject(err);
+
+              let nextNumber: number;
+
+              if (!row) {
+                // Is saal ka pehla invoice → start number se shuru
+                nextNumber = startNum;
+              } else {
+                const lastInvoice = row.invoiceNumber as string; // e.g., "INV-2025-00123"
+                const parts = lastInvoice.split("-");
+                const numPart = parts[parts.length - 1]; // last part after final -
+                const lastNum = Number(numPart || "0");
+                nextNumber = lastNum + 1;
+              }
+
+              // Pad with zeros (6 digits recommended for clean look)
+              const padded = String(nextNumber).padStart(6, "0");
+
+              const newInvoiceNumber = `${prefix}${currentYear}-${padded}`;
+              resolve(newInvoiceNumber);
+            }
+          );
+        }
+      );
+    });
   });
 }
 
@@ -90,7 +149,7 @@ function calculateTotalsWithDiscount(
   qty: number,
   gstRate: number,
   isGstIncluded: boolean,
-  lineDiscount = 0, // per quantity (flat) OR pass 0
+  lineDiscount = 0,
   applyGST = true
 ) {
   const rate = Number(gstRate) || 0;
@@ -125,44 +184,11 @@ function calculateTotalsWithDiscount(
 
 export const setupIpcHandlers = () => {
   // ====================== AUTH HANDLERS ============================
-  ipcMain.handle("app-is-setup-complete", async () => await isSetupComplete());
+  ipcMain.handle(
+    "app-is-setup-complete",
+    async () => await checkSetupComplete()
+  );
   ipcMain.handle("app-is-first-time", () => isFirstTimeSetup());
-  ipcMain.handle("app-setup-business", (e, data) => setupBusiness(data));
-  ipcMain.handle("app-get-user", () => getCurrentUser());
-
-  // ========================= OFFLINE LOGIN ============================
-  // ipcMain.handle("auth:loginOffline", async (_, { username, password }) => {
-  //   const user = await getLocalUser(username);
-  //   if (!user) return { ok: false, msg: "User not found" };
-
-  //   const ok = await verifyPassword(user.passwordHash, password);
-  //   if (!ok) return { ok: false, msg: "Invalid password" };
-
-  //   return { ok: true };
-  // });
-
-  // ipcMain.handle("auth:activateOnline", async (_, { username, password }) => {
-  //   const user = await getLocalUser(username);
-  //   if (!user) return { ok: false, msg: "Offline account not found" };
-
-  //   const ok = await verifyPassword(user.passwordHash, password);
-  //   if (!ok) return { ok: false, msg: "Invalid password" };
-
-  //   const response = await activateOnlineAccount(username, password);
-
-  //   if (!response.ok) return response;
-
-  //   await storeRefreshToken(username, response.refreshToken);
-
-  //   return {
-  //     ok: true,
-  //     accessToken: response.accessToken,
-  //   };
-  // });
-
-  // ipcMain.handle("auth-get-current-user", async () => {
-  //   return await getCurrentUser();
-  // });
 
   // ================== inventory state ============================
   ipcMain.handle("inventory:state", async () => {
@@ -207,56 +233,365 @@ export const setupIpcHandlers = () => {
     }
   });
 
+  // Dashboard summary handler: returns today's sales/profit/orders, monthly sales & profit, low stock and expiring items
+  ipcMain.handle("dashboard:get", async () => {
+    const db = await getDB();
+
+    const runGet = (query: string, params: any[] = []) =>
+      new Promise<any>((resolve, reject) => {
+        db.get(query, params, (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        });
+      });
+
+    const runAll = (query: string, params: any[] = []) =>
+      new Promise<any[]>((resolve, reject) => {
+        db.all(query, params, (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows);
+        });
+      });
+
+    try {
+      // Today's sales & orders
+      const todayRow = (await runGet(
+        `SELECT IFNULL(SUM(grandTotal),0) AS todaySales, COUNT(*) AS orders
+         FROM invoices
+         WHERE date(date) = date('now','localtime')`
+      )) || { todaySales: 0, orders: 0 };
+
+      // Today's profit (using invoice items and inventory purchasePrice)
+      const profitRow = (await runGet(
+        `SELECT IFNULL(SUM((ii.unitPrice - COALESCE(inv.purchasePrice, ii.unitPrice)) * ii.quantity),0) AS profit
+         FROM invoiceItems ii
+         JOIN invoices i ON ii.invoiceId = i.id
+         LEFT JOIN inventory inv ON ii.inventoryId = inv.id
+         WHERE date(i.date) = date('now','localtime')`
+      )) || { profit: 0 };
+
+      // Monthly sales for current year (array of 12 months)
+      const salesRows = (await runAll(
+        `SELECT strftime('%m', date) AS month, IFNULL(SUM(grandTotal),0) AS sales
+         FROM invoices
+         WHERE strftime('%Y', date) = strftime('%Y','now','localtime')
+         GROUP BY month
+         ORDER BY month`
+      )) || [];
+
+      // Monthly profit for current year
+      const profitRows = (await runAll(
+        `SELECT strftime('%m', i.date) AS month, IFNULL(SUM((ii.unitPrice - COALESCE(inv.purchasePrice, ii.unitPrice)) * ii.quantity),0) AS profit
+         FROM invoiceItems ii
+         JOIN invoices i ON ii.invoiceId = i.id
+         LEFT JOIN inventory inv ON ii.inventoryId = inv.id
+         WHERE strftime('%Y', i.date) = strftime('%Y','now','localtime')
+         GROUP BY month
+         ORDER BY month`
+      )) || [];
+
+      // Build full 12-month arrays (Jan..Dec)
+      const months = Array.from({ length: 12 }, (_, i) => ({
+        month: String(i + 1).padStart(2, '0'),
+        sales: 0,
+        profit: 0,
+      }));
+
+      for (const r of salesRows) {
+        const idx = Number(r.month) - 1;
+        if (months[idx]) months[idx].sales = Number(r.sales) || 0;
+      }
+      for (const r of profitRows) {
+        const idx = Number(r.month) - 1;
+        if (months[idx]) months[idx].profit = Number(r.profit) || 0;
+      }
+
+      // Low stock items
+      const lowStock = (await runAll(
+        `SELECT id, productName, stock, reorderLevel
+         FROM inventory
+         WHERE stock <= reorderLevel AND stock > 0
+         ORDER BY stock ASC
+         LIMIT 10`
+      )) || [];
+
+      // Expiring soon (next 30 days)
+      const expiring = (await runAll(
+        `SELECT id, productName, stock, expiryDate,
+                CAST((julianday(expiryDate) - julianday('now')) AS INTEGER) AS daysToExpiry
+         FROM inventory
+         WHERE expiryDate IS NOT NULL
+           AND date(expiryDate) BETWEEN date('now','localtime') AND date('now','+30 days','localtime')
+         ORDER BY expiryDate ASC
+         LIMIT 10`
+      )) || [];
+
+      return {
+        success: true,
+        data: {
+          todaySales: Number(todayRow.todaySales) || 0,
+          todayProfit: Number(profitRow.profit) || 0,
+          todayOrders: Number(todayRow.orders) || 0,
+          months,
+          lowStock,
+          expiring,
+        },
+      };
+    } catch (e: any) {
+      console.error("dashboard:get error:", e);
+      return { success: false, message: e.message };
+    }
+  });
+
+  // Dashboard: Top categories & top products for sidebar cards / lists
+  ipcMain.handle("dashboard:topLists", async () => {
+    const db = await getDB();
+
+    const runAll = (query: string, params: any[] = []) =>
+      new Promise<any[]>((resolve, reject) => {
+        db.all(query, params, (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows);
+        });
+      });
+
+    try {
+      const categoriesRows = await runAll(`
+        SELECT COALESCE(inv.category, 'Uncategorized') AS category,
+               IFNULL(SUM(ii.unitPrice * ii.quantity),0) AS sales,
+               IFNULL(SUM((ii.unitPrice - COALESCE(inv.purchasePrice, ii.unitPrice)) * ii.quantity),0) AS profit
+        FROM invoiceItems ii
+        JOIN invoices i ON ii.invoiceId = i.id
+        LEFT JOIN inventory inv ON ii.inventoryId = inv.id
+        WHERE strftime('%Y', i.date) = strftime('%Y','now','localtime')
+        GROUP BY category
+        ORDER BY sales DESC
+        LIMIT 10
+      `);
+
+      const productsRows = await runAll(`
+        SELECT COALESCE(ii.productName, 'Unknown') AS productName,
+               IFNULL(SUM(ii.quantity),0) AS units,
+               IFNULL(SUM(ii.unitPrice * ii.quantity),0) AS revenue,
+               IFNULL(SUM((ii.unitPrice - COALESCE(inv.purchasePrice, ii.unitPrice)) * ii.quantity),0) AS profit
+        FROM invoiceItems ii
+        JOIN invoices i ON ii.invoiceId = i.id
+        LEFT JOIN inventory inv ON ii.inventoryId = inv.id
+        WHERE strftime('%Y', i.date) = strftime('%Y','now','localtime')
+        GROUP BY ii.productName
+        ORDER BY units DESC
+        LIMIT 10
+      `);
+
+      const categories = (categoriesRows || []).map((r) => ({
+        category: r.category,
+        sales: Number(r.sales) || 0,
+        profit: Number(r.profit) || 0,
+        margin: Number(r.sales) ? +((Number(r.profit) / Number(r.sales)) * 100).toFixed(1) : 0,
+      }));
+
+      const products = (productsRows || []).map((r) => ({
+        product: r.productName,
+        units: Number(r.units) || 0,
+        revenue: Number(r.revenue) || 0,
+        profit: Number(r.profit) || 0,
+      }));
+
+      return { success: true, data: { categories, products } };
+    } catch (e: any) {
+      console.error("dashboard:topLists error:", e);
+      return { success: false, message: e.message };
+    }
+  });
+
+  // --- Consolidated & Corrected Auth Handlers ---
+  ipcMain.handle("app-setup-business", async (event, data) => {
+    // The trial period is now set inside the setupBusiness service itself.
+    return setupBusiness(data);
+  });
+
+  ipcMain.handle("app-get-user", async () => {
+    const user = await getUser();
+    if (!user) {
+      // This can happen before setup is complete. It's not an error.
+      return null;
+    }
+    const entitlements = checkUserEntitlements(user);
+    return { user, entitlements };
+  });
+
+  ipcMain.handle(
+    "license:simulatePurchase",
+    async (
+      event,
+      planName: "Starter" | "Standard" | "Pro",
+      billingCycle: "monthly" | "yearly"
+    ) => {
+      // 1. Generate the license key securely in the main process
+      const plan = planName.toLowerCase() as "starter" | "standard" | "pro";
+      let licenseKey: string;
+      if (plan === "starter") {
+        licenseKey = generateLicense("starter");
+      } else {
+        const duration = billingCycle === "yearly" ? 365 : 30;
+        licenseKey = generateLicense(plan, duration);
+      }
+
+      // 2. Activate the license (logic from the old 'license:activate' handler)
+      const user = await getUser();
+      if (!user) {
+        throw new Error("User not found. Cannot activate license.");
+      }
+
+      const updatedProfile: Partial<UserProfile> = {
+        licenseKey,
+        isTrial: false,
+      };
+
+      await updateUser(updatedProfile);
+
+      // 3. Re-fetch user and return new entitlements
+      const finalUser = await getUser();
+      if (!finalUser) {
+        throw new Error("Failed to retrieve updated user profile.");
+      }
+      const entitlements = checkUserEntitlements(finalUser);
+
+      return { success: true, data: { user: finalUser, entitlements } };
+    }
+  );
+
   // ================== Add inventory item =========================
-  ipcMain.handle("inventory:add", async (_, item: InventoryItem) => {
+  // ipcMain.handle("inventory:add", async (_, item: InventoryItem) => {
+  //   try {
+  //     const db = await getDB();
+
+  //     return new Promise((resolve) => {
+  //       db.run(
+  //         `
+  //                   INSERT INTO inventory (
+  //                   productName, category, brand, sku, barcode,
+  //                   unit, stock, status, reorderLevel, purchasePrice,
+  //                   sellingPrice, mrp, discount, gstRate, gstType, isGstIncluded,
+  //                   supplier, description, lowStockAlert, purchaseDate, expiryDate, imageUrl
+  //                   ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  //                   `,
+  //         [
+  //           item.productName,
+  //           item.category,
+  //           item.brand ?? null,
+  //           item.sku,
+  //           item.barcode ?? null,
+  //           item.unit,
+  //           item.stock ?? 0,
+  //           item.status ?? "active",
+  //           item.reorderLevel ?? 10,
+  //           item.purchasePrice,
+  //           item.sellingPrice,
+  //           item.mrp ?? null,
+  //           item.discount ?? 0,
+  //           item.gstRate ?? 0,
+  //           item.gstType ?? "CGST_SGST",
+  //           item.isGstIncluded ? 1 : 0,
+  //           item.supplier ?? null,
+  //           item.description ?? null,
+  //           item.lowStockAlert ?? 1,
+  //           item.purchaseDate ?? null,
+  //           item.expiryDate ?? null,
+  //           item.imageUrl ?? null,
+  //         ],
+  //         function (err) {
+  //           if (err) {
+  //             resolve({ success: false, error: err.message });
+  //           } else {
+  //             resolve({ success: true, id: this.lastID.toString() });
+  //           }
+  //         }
+  //       );
+  //     });
+  //   } catch (error) {
+  //     return { success: false, error: error.message };
+  //   }
+  // });
+  ipcMain.handle("inventory:add", async (_event, item: InventoryItem) => {
     try {
       const db = await getDB();
+
+      const user = await getUser();
+
+      if (!user) {
+        return { success: false, error: "User not logged in" };
+      }
 
       return new Promise((resolve) => {
         db.run(
           `
-                    INSERT INTO inventory (
-                    productName, category, brand, sku, barcode,
-                    unit, stock, status, reorderLevel, purchasePrice,
-                    sellingPrice, mrp, discount, gstRate, gstType, isGstIncluded,
-                    supplier, description, lowStockAlert, purchaseDate, expiryDate, imageUrl
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    `,
+        INSERT INTO inventory (
+          userId,
+          productName,
+          category,
+          brand,
+          sku,
+          barcode,
+          unit,
+          stock,
+          reorderLevel,
+          purchasePrice,
+          sellingPrice,
+          mrp,
+          discount,
+          hsnCode,
+          gstRate,
+          supplier,
+          description,
+          -- purchaseDate,
+          -- expiryDate,
+          imageUrl,
+          status
+        ) VALUES (
+          ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+          ?, ?, ?, ?, ?, ?, ?, ?, ?
+        )
+        `,
           [
+            user.id,
+
             item.productName,
             item.category,
             item.brand ?? null,
             item.sku,
             item.barcode ?? null,
             item.unit,
+
             item.stock ?? 0,
-            item.status ?? "active",
             item.reorderLevel ?? 10,
+
             item.purchasePrice,
             item.sellingPrice,
             item.mrp ?? null,
             item.discount ?? 0,
+
+            item.hsnCode ?? null,
             item.gstRate ?? 0,
-            item.gstType ?? "CGST_SGST",
-            item.isGstIncluded ? 1 : 0,
+
             item.supplier ?? null,
             item.description ?? null,
-            item.lowStockAlert ?? 1,
-            item.purchaseDate ?? null,
-            item.expiryDate ?? null,
+            // item.purchaseDate ?? null,
+            // item.expiryDate ?? null,
             item.imageUrl ?? null,
+            item.status ?? "active",
           ],
           function (err) {
             if (err) {
-              resolve({ success: false, error: err.message });
-            } else {
-              resolve({ success: true, id: this.lastID.toString() });
+              return resolve({ success: false, error: err.message });
             }
+
+            resolve({ success: true });
           }
         );
       });
-    } catch (error) {
-      return { success: false, error: error.message };
+    } catch (err: any) {
+      return { success: false, error: err.message };
     }
   });
 
@@ -354,142 +689,354 @@ export const setupIpcHandlers = () => {
     }
   });
 
-  // ================== CART HANDLERS ============================
-  ipcMain.handle("cart:add", async (_, { item, quantity }) => {
+  // ================== Add to Cart (Smart: Merge if exists) ==================
+  ipcMain.handle("cart:add", async (_, { item, quantity = 1 }) => {
     const db = getDB();
-    const qty = Math.max(1, quantity);
+    const qtyToAdd = Math.max(1, quantity);
 
-    // Reduce stock immediately
-    await new Promise((resolve) =>
-      db.run(
-        `UPDATE inventory SET stock = stock - ? WHERE id = ?`,
-        [qty, item.id],
-        resolve
-      )
-    );
+    try {
+      await new Promise<void>((resolve, reject) => {
+        db.serialize(() => {
+          db.run("BEGIN TRANSACTION");
 
-    const totals = calculateTotals(
-      item.sellingPrice,
-      qty,
-      item.gstRate,
-      !!item.isGstIncluded,
-      item.discount ?? 0,
-      true // applyGST
-    );
+          // Step 1: Check if item already exists in cart
+          db.get(
+            `SELECT * FROM cart WHERE inventoryId = ?`,
+            [item.id],
+            (err, existingRow: any) => {
+              if (err) {
+                db.run("ROLLBACK");
+                return reject(err);
+              }
 
-    await db.run(
-      `
-      INSERT INTO cart (
-        inventoryId, productName, sku, barcode, unit, sellingPrice,
-        quantity, discount, taxableAmount, gstAmount, cgst, sgst, igst, totalPrice
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `,
-      [
-        item.id,
-        item.productName,
-        item.sku,
-        item.barcode,
-        item.unit,
-        item.sellingPrice,
-        qty,
-        item.discount ?? 0,
-        totals.taxable,
-        totals.gstAmount,
-        totals.cgst,
-        totals.sgst,
-        totals.igst,
-        totals.total,
-      ]
-    );
+              if (existingRow) {
+                // Item already in cart → Increase quantity
+                const newQty = existingRow.quantity + qtyToAdd;
 
-    return { success: true };
-  });
+                // Update stock (decrease by qtyToAdd)
+                db.run(
+                  `UPDATE inventory SET stock = stock - ? WHERE id = ?`,
+                  [qtyToAdd, item.id],
+                  function (err) {
+                    if (err || this.changes === 0) {
+                      db.run("ROLLBACK");
+                      return reject(new Error("Failed to update stock"));
+                    }
 
-  // ================== Update cart item quantity ==================
-  ipcMain.handle(
-    "cart:updateQuantity",
-    async (event, { cartId, newQuantity }) => {
-      const db = getDB();
+                    // Recalculate totals
+                    const totals = calculateTotals(
+                      existingRow.sellingPrice,
+                      newQty,
+                      item.gstRate,
+                      !!item.isGstIncluded,
+                      existingRow.discount ?? 0,
+                      true
+                    );
 
-      return new Promise((resolve) => {
-        db.get(`SELECT * FROM cart WHERE id = ?`, [cartId], (err, row: any) => {
-          if (!row) return resolve({ success: false });
+                    // Update cart row
+                    db.run(
+                      `
+                    UPDATE cart SET
+                      quantity = ?,
+                      taxableAmount = ?,
+                      gstAmount = ?,
+                      cgst = ?,
+                      sgst = ?,
+                      igst = ?,
+                      totalPrice = ?,
+                      updatedAt = CURRENT_TIMESTAMP
+                    WHERE id = ?
+                  `,
+                      [
+                        newQty,
+                        totals.taxable,
+                        totals.gstAmount,
+                        totals.cgst,
+                        totals.sgst,
+                        totals.igst,
+                        totals.total,
+                        existingRow.id,
+                      ],
+                      function (err) {
+                        if (err) {
+                          db.run("ROLLBACK");
+                          return reject(err);
+                        }
+                        db.run("COMMIT");
+                        resolve();
+                      }
+                    );
+                  }
+                );
+              } else {
+                // New item → Insert fresh row
+                // First reduce stock
+                db.run(
+                  `UPDATE inventory SET stock = stock - ? WHERE id = ?`,
+                  [qtyToAdd, item.id],
+                  function (err) {
+                    if (err || this.changes === 0) {
+                      db.run("ROLLBACK");
+                      return reject(
+                        new Error("Out of stock or item not found")
+                      );
+                    }
 
-          const oldQty = row.quantity;
-          const qty = Math.max(1, newQuantity);
+                    const totals = calculateTotals(
+                      item.sellingPrice,
+                      qtyToAdd,
+                      item.gstRate,
+                      !!item.isGstIncluded,
+                      item.discount ?? 0,
+                      true
+                    );
 
-          const diff = qty - oldQty;
-
-          if (diff !== 0) {
-            db.run(`UPDATE inventory SET stock = stock - ? WHERE id = ?`, [
-              diff,
-              row.inventoryId,
-            ]);
-          }
-
-          const updated = calculateTotals(
-            row.sellingPrice,
-            qty,
-            row.gstRate,
-            !!row.isGstIncluded,
-            row.discount ?? 0,
-            true
-          );
-
-          db.run(
-            `
-            UPDATE cart SET 
-                quantity = ?, 
-                taxableAmount = ?, 
-                gstAmount = ?, 
-                cgst = ?, 
-                sgst = ?, 
-                igst = ?, 
-                totalPrice = ?, 
-                updatedAt = CURRENT_TIMESTAMP
-            WHERE id = ?
-        `,
-            [
-              qty,
-              updated.taxable,
-              updated.gstAmount,
-              updated.cgst,
-              updated.sgst,
-              updated.igst,
-              updated.total,
-              cartId,
-            ],
-            () => resolve({ success: true })
+                    db.run(
+                      `
+                    INSERT INTO cart (
+                      inventoryId, productName, sku, barcode, unit, sellingPrice,
+                      quantity, discount, taxableAmount, gstAmount, cgst, sgst, igst, totalPrice
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                  `,
+                      [
+                        item.id,
+                        item.productName,
+                        item.sku,
+                        item.barcode,
+                        item.unit,
+                        item.sellingPrice,
+                        qtyToAdd,
+                        item.discount ?? 0,
+                        totals.taxable,
+                        totals.gstAmount,
+                        totals.cgst,
+                        totals.sgst,
+                        totals.igst,
+                        totals.total,
+                      ],
+                      function (err) {
+                        if (err) {
+                          db.run("ROLLBACK");
+                          return reject(err);
+                        }
+                        db.run("COMMIT");
+                        resolve();
+                      }
+                    );
+                  }
+                );
+              }
+            }
           );
         });
       });
-    }
-  );
 
-  // ================== Remove cart item ==================
+      return { success: true };
+    } catch (error: any) {
+      console.error("cart:add error:", error);
+      return {
+        success: false,
+        error: error.message || "Failed to add to cart",
+      };
+    }
+  });
+
+  // ================== Update Quantity ==================
+  ipcMain.handle("cart:updateQuantity", async (_, { cartId, newQuantity }) => {
+    const db = getDB();
+    const qty = Math.max(1, newQuantity);
+
+    try {
+      await new Promise<void>((resolve, reject) => {
+        db.get(`SELECT * FROM cart WHERE id = ?`, [cartId], (err, row: any) => {
+          if (err || !row) {
+            return resolve(); // or reject if you want strict
+          }
+
+          const oldQty = row.quantity;
+          const diff = qty - oldQty;
+
+          db.serialize(() => {
+            db.run("BEGIN TRANSACTION");
+
+            if (diff !== 0) {
+              db.run(
+                `UPDATE inventory SET stock = stock - ? WHERE id = ?`,
+                [diff, row.inventoryId],
+                function (err) {
+                  if (err || this.changes === 0) {
+                    db.run("ROLLBACK");
+                    return reject(new Error("Stock update failed"));
+                  }
+                }
+              );
+            }
+
+            const updated = calculateTotals(
+              row.sellingPrice,
+              qty,
+              row.gstRate,
+              !!row.isGstIncluded,
+              row.discount ?? 0,
+              true
+            );
+
+            db.run(
+              `
+            UPDATE cart SET
+              quantity = ?,
+              taxableAmount = ?,
+              gstAmount = ?,
+              cgst = ?,
+              sgst = ?,
+              igst = ?,
+              totalPrice = ?,
+              updatedAt = CURRENT_TIMESTAMP
+            WHERE id = ?
+          `,
+              [
+                qty,
+                updated.taxable,
+                updated.gstAmount,
+                updated.cgst,
+                updated.sgst,
+                updated.igst,
+                updated.total,
+                cartId,
+              ],
+              function (err) {
+                if (err) {
+                  db.run("ROLLBACK");
+                  reject(err);
+                } else {
+                  db.run("COMMIT");
+                  resolve();
+                }
+              }
+            );
+          });
+        });
+      });
+
+      return { success: true };
+    } catch (error) {
+      console.error("cart:updateQuantity error:", error);
+      return { success: false };
+    }
+  });
+
+  // ================== Remove Cart Item ==================
   ipcMain.handle("cart:remove", async (_, cartId) => {
     const db = getDB();
 
-    return new Promise((resolve) => {
-      db.get(
-        `SELECT quantity, inventoryId FROM cart WHERE id = ?`,
-        [cartId],
-        (err, row: CartItem) => {
-          if (!row) return resolve({ success: false });
+    try {
+      await new Promise<void>((resolve, reject) => {
+        db.get(
+          `SELECT quantity, inventoryId FROM cart WHERE id = ?`,
+          [cartId],
+          (err, row: any) => {
+            if (err || !row) {
+              return reject(new Error("Cart item not found"));
+            }
 
-          // stock restore
-          db.run(`UPDATE inventory SET stock = stock + ? WHERE id = ?`, [
-            row.quantity,
-            row.inventoryId,
-          ]);
+            db.serialize(() => {
+              db.run("BEGIN TRANSACTION");
 
-          db.run(`DELETE FROM cart WHERE id = ?`, [cartId], () =>
-            resolve({ success: true })
+              // Restore stock
+              db.run(
+                `UPDATE inventory SET stock = stock + ? WHERE id = ?`,
+                [row.quantity, row.inventoryId],
+                function (err) {
+                  if (err) {
+                    db.run("ROLLBACK");
+                    return reject(err);
+                  }
+                }
+              );
+
+              // Delete from cart
+              db.run(`DELETE FROM cart WHERE id = ?`, [cartId], function (err) {
+                if (err) {
+                  db.run("ROLLBACK");
+                  reject(err);
+                } else {
+                  db.run("COMMIT");
+                  resolve();
+                }
+              });
+            });
+          }
+        );
+      });
+
+      return { success: true };
+    } catch (error: any) {
+      console.error("cart:remove error:", error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  // ================== Clear Cart ==================
+  ipcMain.handle("cart:clear", async () => {
+    const db = getDB();
+
+    try {
+      await new Promise((resolve, reject) => {
+        db.serialize(() => {
+          db.run("BEGIN TRANSACTION");
+
+          db.all(
+            `SELECT inventoryId, quantity FROM cart`,
+            (err, rows: any[]) => {
+              if (err || rows.length === 0) {
+                db.run("COMMIT");
+                return resolve({
+                  success: true,
+                  message: "Cart already empty",
+                });
+              }
+
+              let restored = 0;
+              const total = rows.length;
+
+              rows.forEach((row) => {
+                db.run(
+                  `UPDATE inventory SET stock = stock + ? WHERE id = ?`,
+                  [row.quantity, row.inventoryId],
+                  function (err) {
+                    if (err) {
+                      db.run("ROLLBACK");
+                      return reject(new Error("Failed to restore stock"));
+                    }
+                    restored++;
+                    if (restored === total) {
+                      db.run(`DELETE FROM cart`, (err) => {
+                        if (err) {
+                          db.run("ROLLBACK");
+                          reject(err);
+                        } else {
+                          db.run("COMMIT");
+                          resolve({
+                            success: true,
+                            message: "Cart cleared successfully",
+                          });
+                        }
+                      });
+                    }
+                  }
+                );
+              });
+            }
           );
-        }
-      );
-    });
+        });
+      });
+
+      return { success: true };
+    } catch (error: any) {
+      console.error("cart:clear error:", error);
+      return { success: false, error: error.message };
+    }
   });
 
   // ================= GET CURRENT CART =================
@@ -507,94 +1054,147 @@ export const setupIpcHandlers = () => {
     });
   });
 
-  // ================= CLEAR CART (Bill Done) =================
-  ipcMain.handle("cart:clear", async () => {
+  // ================= STORE: GET =================
+  // 07AAHCC9731E1ZN
+  ipcMain.handle("store:get", async () => {
     const db = getDB();
 
     return new Promise((resolve) => {
-      db.serialize(() => {
-        db.run("BEGIN TRANSACTION");
+      db.get(`SELECT * FROM storeSettings`, (err, row: any) => {
+        if (err) {
+          return resolve({ success: false, error: err.message });
+        }
 
-        db.all(`SELECT inventoryId, quantity FROM cart`, (err, rows: any[]) => {
-          if (err) {
-            db.run("ROLLBACK");
-            return resolve({ success: false, error: err.message });
-          }
+        if (!row) {
+          return resolve({ success: true, data: null });
+        }
 
-          if (rows.length === 0) {
-            db.run("COMMIT");
-            return resolve({ success: true, message: "Cart already empty" });
-          }
-
-          let done = 0;
-          const total = rows.length;
-          let errorOccurred = false;
-
-          rows.forEach((row) => {
-            const qty = Number(row.quantity) || 0;
-            const invId = row.inventoryId as string;
-
-            db.run(
-              `UPDATE inventory SET stock = stock + ? WHERE id = ?`,
-              [qty, invId],
-              function (err) {
-                if (errorOccurred) return;
-
-                if (err || this.changes === 0) {
-                  db.run("ROLLBACK");
-                  errorOccurred = true;
-                  return resolve({
-                    success: false,
-                    error: `Failed to restore stock for item: ${invId}`,
-                  });
-                }
-
-                done++;
-                if (done === total) {
-                  db.run(`DELETE FROM cart`, (err) => {
-                    if (err) {
-                      db.run("ROLLBACK");
-                      return resolve({
-                        success: false,
-                        error: "Failed to clear cart",
-                      });
-                    }
-
-                    db.run("COMMIT");
-                    resolve({
-                      success: true,
-                      message: "Cart cleared & stock restored",
-                    });
-                  });
-                }
-              }
-            );
-          });
-        });
+        resolve({ success: true, data: row });
       });
     });
   });
 
-  // ================= STORE: GET =================
-  ipcMain.handle("store:get", async () => {
+  ipcMain.handle("store:billingSettings", async () => {
     const db = getDB();
-    return new Promise((resolve) => {
-      db.get(`SELECT * FROM store_settings WHERE id = 1`, (err, row: any) => {
-        if (err) return resolve({ success: false, error: err.message });
 
+    return new Promise((resolve) => {
+      db.get(`SELECT * FROM billingSettings LIMIT 1`, (err, row) => {
+        if (err) {
+          return resolve({ success: false, error: err.message });
+        }
+
+        // 👉 Agar first time hai (row nahi hai)
         if (!row) {
-          // First time - create default row
           db.run(
             `
-                    INSERT INTO store_settings (
-                        id, storeName, phone, defaultCurrency, defaultTaxRate, gstVerified
-                    ) VALUES (1, 'My Store', '', 'INR', 18.0, 0)
-                `,
-            () => {
+          INSERT INTO billingSettings (
+            gstIncludedDefault,
+            defaultGstRate,
+            invoicePrefix,
+            invoiceStartNumber,
+            roundOffBill,
+            showHsnOnInvoice,
+            showCustomerPhone,
+            invoiceFooterNote
+          ) VALUES (
+            0, 0, 'INV-', 1, 1, 1, 1, ''
+          )
+        `,
+            function (insertErr) {
+              if (insertErr) {
+                return resolve({ success: false, error: insertErr.message });
+              }
+
               db.get(
-                `SELECT * FROM store_settings WHERE id = 1`,
-                (_, defaultRow) => {
-                  resolve({ success: true, data: defaultRow });
+                `SELECT * FROM billingSettings LIMIT 1`,
+                (fetchErr, newRow) => {
+                  if (fetchErr) {
+                    return resolve({
+                      success: false,
+                      error: fetchErr.message,
+                    });
+                  }
+                  resolve({ success: true, data: newRow });
+                }
+              );
+            }
+          );
+          return;
+        }
+
+        resolve({ success: true, data: row });
+      });
+    });
+  });
+
+  ipcMain.handle("store:notifications", async () => {
+    const db = getDB();
+
+    return new Promise((resolve) => {
+      db.get(`SELECT * FROM notificationSettings LIMIT 1`, (err, row) => {
+        if (err) {
+          return resolve({ success: false, error: err.message });
+        }
+
+        if (!row) {
+          db.run(
+            `
+            INSERT INTO notificationSettings DEFAULT VALUES
+            `,
+            function (insertErr) {
+              if (insertErr) {
+                return resolve({ success: false, error: insertErr.message });
+              }
+
+              db.get(
+                `SELECT * FROM notificationSettings WHERE rowid = last_insert_rowid()`,
+                (_, newRow) => {
+                  resolve({ success: true, data: newRow });
+                }
+              );
+            }
+          );
+          return;
+        }
+
+        resolve({ success: true, data: row });
+      });
+    });
+  });
+
+  ipcMain.handle("store:preference", async () => {
+    const db = getDB();
+
+    return new Promise((resolve) => {
+      db.get(`SELECT * FROM appPreferences LIMIT 1`, (err, row) => {
+        if (err) {
+          return resolve({ success: false, error: err.message });
+        }
+
+        // Agar table empty hai → default insert
+        if (!row) {
+          db.run(
+            `
+          INSERT INTO appPreferences (
+            showDashboardStocks,
+            theme,
+            language,
+            autoBackup
+          ) VALUES (1, 'light', 'en', 1)
+        `,
+            (insertErr) => {
+              if (insertErr) {
+                return resolve({ success: false, error: insertErr.message });
+              }
+
+              db.get(
+                `SELECT * FROM appPreferences LIMIT 1`,
+                (fetchErr, newRow) => {
+                  if (fetchErr) {
+                    return resolve({ success: false, error: fetchErr.message });
+                  }
+
+                  resolve({ success: true, data: newRow });
                 }
               );
             }
@@ -613,47 +1213,45 @@ export const setupIpcHandlers = () => {
     return new Promise((resolve) => {
       db.run(
         `
-            INSERT INTO store_settings (
-                id, storeName, email, phone, gstin, companyName, taxId, address, logoUrl, gstVerified,
-                defaultCurrency, defaultTaxRate, returnPolicy
-            )
-            VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(id) DO UPDATE SET
-                storeName = excluded.storeName,
-                email = excluded.email,
-                phone = excluded.phone,
-                gstin = excluded.gstin,
-                companyName = excluded.companyName,
-                taxId = excluded.taxId,
-                address = excluded.address,
-                logoUrl = excluded.logoUrl,
-                gstVerified = excluded.gstVerified,
-                defaultCurrency = excluded.defaultCurrency,
-                defaultTaxRate = excluded.defaultTaxRate,
-                returnPolicy = excluded.returnPolicy,
-                updatedAt = CURRENT_TIMESTAMP
+        INSERT INTO storeSettings (
+          id, storeName, ownerName, phone, email, address, gstNumber,
+          stateCode, gstEnabled
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+          storeName = excluded.storeName,
+          ownerName = excluded.ownerName,
+          phone = excluded.phone,
+          email = excluded.email,
+          address = excluded.address,
+          gstNumber = excluded.gstNumber,
+          stateCode = excluded.stateCode,
+          gstEnabled = excluded.gstEnabled,
+          // gstIncludedDefault = excluded.gstIncludedDefault,
+          // invoicePrefix = excluded.invoicePrefix,
+          // invoiceStartNumber = excluded.invoiceStartNumber,
+          updatedAt = CURRENT_TIMESTAMP
         `,
         [
-          settings.storeName || "My Store",
-          settings.email || "",
-          settings.phone || "",
-          settings.gstin || null,
-          settings.companyName || null,
-          settings.taxId || "",
-          settings.address || "",
-          settings.logoUrl || null,
-          settings.gstVerified ? 1 : 0,
-          settings.defaultCurrency || "INR",
-          Number(settings.defaultTaxRate) || 18.0,
-          settings.returnPolicy || null,
+          settings.id, // the UUID
+          settings.storeName,
+          settings.ownerName,
+          settings.phone,
+          settings.email,
+          settings.address,
+          settings.gstNumber,
+          settings.stateCode,
+          settings.gstEnabled ? 1 : 0,
+          // settings.gstIncludedDefault ? 1 : 0,
+          // settings.invoicePrefix || "INV",
+          // settings.invoiceStartNumber || 1,
         ],
         (err) => {
           if (err) {
             console.error("Store save error:", err.message);
-            resolve({ success: false, error: err.message });
-          } else {
-            resolve({ success: true });
+            return resolve({ success: false, error: err.message });
           }
+          resolve({ success: true });
         }
       );
     });
@@ -664,25 +1262,24 @@ export const setupIpcHandlers = () => {
     const db: Database = getDB();
     const {
       cartItems,
-      customerName,
-      customerPhone,
-      billingAddress,
-      shippingAddress,
-      transportDetails,
+      customerName: rawName = "",
+      customerPhone: rawPhone = "",
+      billingAddress: rawAddress = "",
+      shippingAddress = "",
+      transportDetails = null,
       payments = [],
       discountType = "flat",
       discountValue = 0,
-      cashierName,
+      cashierName = "",
       storeId = "1",
       applyGST = true,
       roundOff = true,
       notes = "",
       footerMessage = "",
-      // Remove grandTotal and paidAmount from destructuring as we'll calculate them
-    } = payload;
+    } = payload || {};
 
     if (!Array.isArray(cartItems) || cartItems.length === 0) {
-      return { success: false, error: "Cart empty" };
+      return { success: false, error: "Cart is empty" };
     }
 
     return new Promise((resolve) => {
@@ -700,26 +1297,23 @@ export const setupIpcHandlers = () => {
           let totalSgst = 0;
           let totalIgst = 0;
           let totalQty = 0;
-          let totalItems = 0;
+          const totalItems = cartItems.length;
 
           const lineRecords: any[] = [];
 
-          // --------------------------
-          //  Cart Loop
-          // --------------------------
-          for (const it of cartItems) {
-            const qty = Number(it.quantity) || 1;
-            const unitPrice = Number(it.unitPrice ?? it.sellingPrice ?? 0) || 0;
-            const gstRate = Number(it.gstRate || 0);
-            const isIncluded =
-              it.isGstIncluded === 1 || it.isGstIncluded === true;
-            const lineDiscount = Number(it.lineDiscount || 0);
+          for (const item of cartItems) {
+            const qty = Math.max(1, Number(item.quantity) || 1);
+            const unitPrice = Number(item.unitPrice ?? item.sellingPrice ?? 0);
+            const gstRate = Number(item.gstRate || 0);
+            const isGstIncluded =
+              item.isGstIncluded === true || item.isGstIncluded === 1;
+            const lineDiscount = Number(item.discount || 0);
 
             const totals = calculateTotalsWithDiscount(
               unitPrice,
               qty,
               gstRate,
-              isIncluded,
+              isGstIncluded,
               lineDiscount,
               applyGST
             );
@@ -731,19 +1325,19 @@ export const setupIpcHandlers = () => {
             totalSgst += totals.sgst;
             totalIgst += totals.igst;
             totalQty += qty;
-            totalItems += 1;
 
             lineRecords.push({
-              inventoryId: it.inventoryId,
-              productName: it.productName,
-              hsnCode: it.hsnCode || null,
-              sku: it.sku || null,
-              unit: it.unit || null,
+              inventoryId: item.inventoryId || null,
+              productName: item.productName || "Unknown",
+              hsnCode: item.hsnCode || null,
+              sku: item.sku || null,
+              barcode: item.barcode || null,
+              unit: item.unit || null,
               quantity: qty,
               unitPrice,
-              lineDiscount,
-              taxableAmount: totals.taxable,
+              discount: lineDiscount,
               gstRate,
+              taxableAmount: totals.taxable,
               gstAmount: totals.gstAmount,
               cgst: totals.cgst,
               sgst: totals.sgst,
@@ -752,148 +1346,148 @@ export const setupIpcHandlers = () => {
             });
           }
 
-          // --------------------------
-          //  Invoice-level discount
-          // --------------------------
-          let invoiceDiscountAmount = 0;
-          if (discountType === "percent" && Number(discountValue) > 0) {
-            invoiceDiscountAmount = +(
-              subTotal *
-              (Number(discountValue) / 100)
-            ).toFixed(2);
-          } else {
-            invoiceDiscountAmount = +Number(discountValue || 0).toFixed(2);
+          // Invoice-level discount
+          let invoiceDiscount = 0;
+          if (discountType === "percentage" && discountValue > 0) {
+            invoiceDiscount = +(subTotal * (discountValue / 100)).toFixed(2);
+          } else if (discountType === "flat") {
+            invoiceDiscount = +Number(discountValue || 0).toFixed(2);
           }
 
-          // --------------------------
-          //  Round OFF
-          // --------------------------
-          let grandBeforeRound = +(subTotal - invoiceDiscountAmount).toFixed(2);
+          let amountBeforeRound = +(subTotal - invoiceDiscount).toFixed(2);
           let roundOffAmount = 0;
-
           if (roundOff) {
-            const rounded = Math.round(grandBeforeRound);
-            roundOffAmount = +(rounded - grandBeforeRound).toFixed(2);
-            grandBeforeRound = rounded;
+            const rounded = Math.round(amountBeforeRound);
+            roundOffAmount = +(rounded - amountBeforeRound).toFixed(2);
+            amountBeforeRound = rounded;
           }
 
-          const grandTotal = +grandBeforeRound.toFixed(2);
+          const grandTotal = +amountBeforeRound.toFixed(2);
           const paidAmount = payments.reduce(
             (sum: number, p: any) => sum + Number(p.amount || 0),
             0
           );
-          const dueAmount = Math.max(grandTotal - paidAmount, 0);
+          const dueAmount = Math.max(0, grandTotal - paidAmount);
           const status =
-            dueAmount > 0 ? (paidAmount > 0 ? "Partial" : "Due") : "Paid";
-          const paymentStatus = status; // Align with status
+            dueAmount === 0 ? "Paid" : paidAmount > 0 ? "Partial" : "Due";
 
-          let customerId: number | null = null;
+          // ======================= SAFE CUSTOMER HANDLING =======================
+          let customerId: string | null = null;
+          let safeCustomerName = "";
+          let safeCustomerPhone = "";
+          let safeCustomerAddress = "";
 
-          // =======================================
-          //  CREATE OR GET CUSTOMER (ONLY IF DUE > 0)
-          // =======================================
           if (dueAmount > 0) {
+            // Convert everything to string and trim safely
+            safeCustomerName = (rawName ?? "").toString().trim();
+            safeCustomerPhone = (rawPhone ?? "").toString().trim();
+            safeCustomerAddress = (rawAddress ?? "").toString().trim();
+
             if (
-              !customerName?.trim() ||
-              !customerPhone?.trim() ||
-              !billingAddress?.trim()
+              !safeCustomerName ||
+              !safeCustomerPhone ||
+              !safeCustomerAddress
             ) {
               throw new Error(
-                "Customer details (name, phone, address) are mandatory for due/partial payments."
+                "Customer name, phone, and address are required for credit sale"
               );
             }
 
-            customerId = await new Promise<number>(
-              (resolveCustomer, rejectCustomer) => {
-                db.get(
-                  `SELECT id FROM customers WHERE phone = ?`,
-                  [customerPhone.trim()],
-                  (err, row: any) => {
-                    if (err) return rejectCustomer(err);
+            // Now use safe values
+            customerId = await new Promise<string>((res, rej) => {
+              db.get(
+                `SELECT id FROM customers WHERE phone = ?`,
+                [safeCustomerPhone],
+                (err, row: any) => {
+                  if (err) return rej(err);
 
-                    if (row) {
-                      // Update if needed
-                      db.run(
-                        `UPDATE customers SET name = ?, address = ? WHERE id = ?`,
-                        [customerName.trim(), billingAddress.trim(), row.id],
-                        (updateErr) => {
-                          if (updateErr) return rejectCustomer(updateErr);
-                          resolveCustomer(row.id);
-                        }
-                      );
-                    } else {
-                      db.run(
-                        `INSERT INTO customers (name, phone, address) VALUES (?, ?, ?)`,
-                        [
-                          customerName.trim(),
-                          customerPhone.trim(),
-                          billingAddress.trim(),
-                        ],
-                        function (err2) {
-                          if (err2) return rejectCustomer(err2);
-                          resolveCustomer(this.lastID);
-                        }
-                      );
-                    }
+                  if (row) {
+                    db.run(
+                      `UPDATE customers SET name = ?, address = ? WHERE id = ?`,
+                      [safeCustomerName, safeCustomerAddress, row.id],
+                      (err) => (err ? rej(err) : res(row.id))
+                    );
+                  } else {
+                    db.run(
+                      `INSERT INTO customers (name, phone, address) VALUES (?, ?, ?)`,
+                      [
+                        safeCustomerName,
+                        safeCustomerPhone,
+                        safeCustomerAddress,
+                      ],
+                      function (err) {
+                        if (err) return rej(err);
+                        db.get(
+                          `SELECT id FROM customers WHERE phone = ?`,
+                          [safeCustomerPhone],
+                          (e, newRow: any) => {
+                            if (e || !newRow)
+                              return rej(
+                                new Error("Failed to retrieve new customer ID")
+                              );
+                            res(newRow.id);
+                          }
+                        );
+                      }
+                    );
                   }
-                );
-              }
-            );
+                }
+              );
+            });
           }
 
-          // =======================================
-          //   INSERT INVOICE
-          // =======================================
+          // Insert Invoice — safe values use kar rahe hain
           const invoiceId = await new Promise<string>((res, rej) => {
             db.run(
               `INSERT INTO invoices (
-              id, customerId, invoiceNumber, date, customerName, customerPhone,
-              billingAddress, shippingAddress, transportDetails, paymentMeta,
+              id, invoiceNumber, date, customerId, customerName, customerPhone, customerAddress,
+              shippingAddress, transportDetails, paymentMeta,
               subTotal, discount, discountType, taxableAmount, gstAmount,
-              cgst, sgst, igst, roundOff, grandTotal, totalQty, totalItems,
-              cashierName, storeId, notes, footerMessage, paidAmount, dueAmount, status, paymentStatus
+              cgst, sgst, igst, roundOff, grandTotal,
+              totalQty, totalItems, paidAmount, dueAmount, status, paymentStatus,
+              cashierName, storeId, notes, footerMessage
             ) VALUES (
               lower(hex(randomblob(16))), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
             )`,
               [
-                customerId, // NULL if full paid
                 invoiceNumber,
                 date,
-                customerName || null,
-                customerPhone || null,
-                billingAddress || null,
+                customerId,
+                dueAmount > 0 ? safeCustomerName : null,
+                dueAmount > 0 ? safeCustomerPhone : null,
+                dueAmount > 0 ? safeCustomerAddress : null,
                 shippingAddress || null,
-                JSON.stringify(transportDetails || null),
-                JSON.stringify(payments || []),
-                +subTotal.toFixed(2),
-                +invoiceDiscountAmount.toFixed(2),
+                transportDetails ? JSON.stringify(transportDetails) : null,
+                payments.length ? JSON.stringify(payments) : null,
+                subTotal,
+                invoiceDiscount,
                 discountType,
-                +totalTaxable.toFixed(2),
-                +totalGst.toFixed(2),
-                +totalCgst.toFixed(2),
-                +totalSgst.toFixed(2),
-                +totalIgst.toFixed(2),
-                +roundOffAmount.toFixed(2),
+                totalTaxable,
+                totalGst,
+                totalCgst,
+                totalSgst,
+                totalIgst,
+                roundOffAmount,
                 grandTotal,
-                +totalQty,
+                totalQty,
                 totalItems,
+                paidAmount,
+                dueAmount,
+                status,
+                status,
                 cashierName || null,
                 storeId,
                 notes || null,
                 footerMessage || null,
-                paidAmount,
-                dueAmount,
-                status,
-                paymentStatus,
               ],
               function (err) {
                 if (err) return rej(err);
-
                 db.get(
                   `SELECT id FROM invoices WHERE invoiceNumber = ?`,
                   [invoiceNumber],
                   (e, row: any) => {
-                    if (e) return rej(e);
+                    if (e || !row)
+                      return rej(new Error("Failed to get invoice ID"));
                     res(row.id);
                   }
                 );
@@ -901,128 +1495,112 @@ export const setupIpcHandlers = () => {
             );
           });
 
-          // =======================================
-          //  INSERT ITEMS
-          // =======================================
-          for (const lr of lineRecords) {
+          // Insert invoice items (same as before)
+          for (const item of lineRecords) {
             await new Promise<void>((res, rej) => {
               db.run(
-                `INSERT INTO invoice_items (
-                id, invoiceId, inventoryId, productName, hsnCode, sku, unit,
-                quantity, unitPrice, lineDiscount, taxableAmount, gstRate,
+                `INSERT INTO invoiceItems (
+                id, invoiceId, inventoryId, productName, hsnCode, sku, barcode, unit,
+                quantity, unitPrice, discount, taxableAmount, gstRate,
                 gstAmount, cgst, sgst, igst, lineTotal
               ) VALUES (
-                lower(hex(randomblob(16))), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                lower(hex(randomblob(16))), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
               )`,
                 [
                   invoiceId,
-                  lr.inventoryId,
-                  lr.productName,
-                  lr.hsnCode,
-                  lr.sku,
-                  lr.unit,
-                  lr.quantity,
-                  lr.unitPrice,
-                  lr.lineDiscount,
-                  lr.taxableAmount,
-                  lr.gstRate,
-                  lr.gstAmount,
-                  lr.cgst,
-                  lr.sgst,
-                  lr.igst,
-                  lr.lineTotal,
+                  item.inventoryId,
+                  item.productName,
+                  item.hsnCode,
+                  item.sku,
+                  item.barcode,
+                  item.unit,
+                  item.quantity,
+                  item.unitPrice,
+                  item.discount,
+                  item.taxableAmount,
+                  item.gstRate,
+                  item.gstAmount,
+                  item.cgst,
+                  item.sgst,
+                  item.igst,
+                  item.lineTotal,
                 ],
                 (err) => (err ? rej(err) : res())
               );
             });
           }
 
-          // =======================================
-          //  LEDGER ENTRIES (ONLY IF DUE > 0 AND CUSTOMER EXISTS)
-          // =======================================
+          // Ledger entries (only if credit sale)
           if (dueAmount > 0 && customerId) {
-            // Get current balance
             const currentBalance = await new Promise<number>(
-              (resolveBal, rejectBal) => {
+              (resBal, rejBal) => {
                 db.get(
-                  `SELECT COALESCE(SUM(CASE WHEN type = 'debit' THEN amount ELSE -amount END), 0) as balance FROM customer_ledger WHERE customer_id = ?`,
+                  `SELECT COALESCE(SUM(CASE WHEN type = 'DEBIT' THEN amount ELSE -amount END), 0) AS balance
+               FROM customerLedger WHERE customerId = ?`,
                   [customerId],
-                  (err, row: any) => {
-                    if (err) return rejectBal(err);
-                    resolveBal(row.balance || 0);
-                  }
+                  (err, row: any) =>
+                    err ? rejBal(err) : resBal(row?.balance || 0)
                 );
               }
             );
 
-            // 1. DEBIT ENTRY (full invoice amount)
-            const newDebitBalance = currentBalance + grandTotal;
-            await new Promise((resolveLedger, rejectLedger) => {
+            const debitBalance = currentBalance + grandTotal;
+            await new Promise<void>((res, rej) => {
               db.run(
-                `INSERT INTO customer_ledger (customer_id, invoice_id, type, amount, balance, date, reference)
-               VALUES (?, ?, 'debit', ?, ?, ?, ?)`,
+                `INSERT INTO customerLedger (customerId, invoiceId, type, amount, balance, notes, createdAt)
+               VALUES (?, ?, 'DEBIT', ?, ?, ?, ?)`,
                 [
                   customerId,
                   invoiceId,
                   grandTotal,
-                  newDebitBalance,
-                  date,
+                  debitBalance,
                   `Invoice ${invoiceNumber}`,
+                  date,
                 ],
-                (err) => (err ? rejectLedger(err) : resolveLedger(true))
+                (err) => (err ? rej(err) : res())
               );
             });
 
-            // 2. CREDIT ENTRY (paid amount, if > 0)
             if (paidAmount > 0) {
-              const newCreditBalance = newDebitBalance - paidAmount;
-              await new Promise((resolveLedger, rejectLedger) => {
+              const creditBalance = debitBalance - paidAmount;
+              await new Promise<void>((res, rej) => {
                 db.run(
-                  `INSERT INTO customer_ledger (customer_id, invoice_id, type, amount, balance, date, reference)
-                 VALUES (?, ?, 'credit', ?, ?, ?, ?)`,
+                  `INSERT INTO customerLedger (customerId, invoiceId, type, amount, balance, notes, createdAt)
+                 VALUES (?, ?, 'CREDIT', ?, ?, ?, ?)`,
                   [
                     customerId,
                     invoiceId,
                     paidAmount,
-                    newCreditBalance,
+                    creditBalance,
+                    `Payment for Invoice ${invoiceNumber}`,
                     date,
-                    `Partial payment for Invoice ${invoiceNumber}`,
                   ],
-                  (err) => (err ? rejectLedger(err) : resolveLedger(true))
+                  (err) => (err ? rej(err) : res())
                 );
               });
             }
           }
 
-          // =======================================
-          //  INSERT META (if needed, optional)
-          // =======================================
-          if (cashierName || notes || footerMessage) {
-            await new Promise<void>((res, rej) => {
-              db.run(
-                `INSERT INTO invoice_meta (id, invoiceId, cashierName, notes, footerMessage) VALUES (lower(hex(randomblob(16))), ?, ?, ?, ?)`,
-                [
-                  invoiceId,
-                  cashierName || null,
-                  notes || null,
-                  footerMessage || null,
-                ],
-                (err) => (err ? rej(err) : res())
-              );
-            });
-          }
-
-          // CLEAR CART
+          // Clear cart
           await new Promise<void>((res, rej) => {
             db.run(`DELETE FROM cart`, (err) => (err ? rej(err) : res()));
           });
 
           db.run("COMMIT");
-
-          resolve({ success: true, invoiceId, invoiceNumber });
+          resolve({
+            success: true,
+            invoiceId,
+            invoiceNumber,
+            grandTotal,
+            dueAmount,
+          });
         } catch (err: any) {
           db.run("ROLLBACK");
-          resolve({ success: false, error: err?.message || String(err) });
+          console.error("Invoice creation failed:", err);
+          resolve({
+            success: false,
+            error: err?.message || "Invoice creation failed",
+          });
         }
       });
     });
@@ -1044,7 +1622,7 @@ export const setupIpcHandlers = () => {
 
           // -------- Items --------
           db.all(
-            `SELECT * FROM invoice_items WHERE invoiceId = ?`,
+            `SELECT * FROM invoiceItems WHERE invoiceId = ?`,
             [invoiceId],
             (err2, items) => {
               if (err2) return resolve({ success: false, error: err2.message });
@@ -1059,7 +1637,7 @@ export const setupIpcHandlers = () => {
 
                   // -------- Ledger --------
                   db.all(
-                    `SELECT * FROM customer_ledger WHERE invoice_id = ? ORDER BY date ASC`,
+                    `SELECT * FROM customerLedger WHERE invoiceId = ? ORDER BY date ASC`,
                     [invoiceId],
                     (err4, ledger) => {
                       if (err4)
@@ -1148,7 +1726,7 @@ export const setupIpcHandlers = () => {
       // --- Fetch invoice items ---
       const items = await new Promise<any[]>((resolve, reject) => {
         db.all(
-          `SELECT * FROM invoice_items WHERE invoiceId = ? ORDER BY id ASC`,
+          `SELECT * FROM invoiceItems WHERE invoiceId = ? ORDER BY id ASC`,
           [invoiceId],
           (err, rows: any[]) => {
             if (err) return reject(err);
@@ -1216,7 +1794,7 @@ export const setupIpcHandlers = () => {
         // const custId = customer?.id || invoice.customer_id;
         ledger = await new Promise<any[]>((resolve, reject) => {
           db.all(
-            `SELECT * FROM customer_ledger WHERE invoice_id = ? ORDER BY date ASC`,
+            `SELECT * FROM customerLedger WHERE invoiceId = ? ORDER BY date ASC`,
             [invoiceId],
             (err, rows: any[]) => {
               if (err) return reject(err);
@@ -1265,14 +1843,14 @@ export const setupIpcHandlers = () => {
           c.name,
           c.phone,
           c.address,
-          c.created_at,
+          c.createdAt,
           
           MAX(i.date) AS lastVisit,
           
           COALESCE((
             SELECT balance 
-            FROM customer_ledger cl 
-            WHERE cl.customer_id = c.id 
+            FROM customerLedger cl 
+            WHERE cl.customerId = c.id
             ORDER BY cl.id DESC 
             LIMIT 1
           ), 0) AS dueAmount,
@@ -1289,7 +1867,7 @@ export const setupIpcHandlers = () => {
           AND TRIM(c.phone) != ''
           -- Optional: Sirf jinka due hai unko dikhao (agar chahiye to uncomment kar dena)
           -- AND COALESCE((
-          --   SELECT balance FROM customer_ledger cl 
+          --   SELECT balance FROM customerLedger cl 
           --   WHERE cl.customer_id = c.id 
           --   ORDER BY cl.id DESC LIMIT 1
           -- ), 0) > 0
@@ -1334,8 +1912,8 @@ export const setupIpcHandlers = () => {
           c.*,
           COALESCE((
             SELECT balance 
-            FROM customer_ledger cl 
-            WHERE cl.customer_id = c.id 
+            FROM customerLedger cl 
+            WHERE cl.customerId = c.id 
             ORDER BY cl.id DESC 
             LIMIT 1
           ), 0) AS dueAmount
@@ -1380,11 +1958,11 @@ export const setupIpcHandlers = () => {
                     productName,
                     quantity,
                     unitPrice,
-                    lineDiscount,
+                    discount,
                     gstRate,
                     gstAmount,
                     lineTotal
-                  FROM invoice_items 
+                  FROM invoiceItems 
                   WHERE invoiceId = ?
                   ORDER BY id
                   `,
@@ -1395,7 +1973,7 @@ export const setupIpcHandlers = () => {
 
                 return {
                   ...inv,
-                  items, // ← YEH ADD HO GAYA!
+                  items,
                   totalItems: items.length,
                   subtotal: items.reduce(
                     (sum: number, it: any) => sum + it.lineTotal,
@@ -1421,9 +1999,9 @@ export const setupIpcHandlers = () => {
           cl.balance,
           cl.reference,
           i.invoiceNumber AS invoice_no
-        FROM customer_ledger cl
-        LEFT JOIN invoices i ON cl.invoice_id = i.id
-        WHERE cl.customer_id = ?
+        FROM customerLedger cl
+        LEFT JOIN invoices i ON cl.invoiceId = i.id
+        WHERE cl.customerId = ?
         ORDER BY cl.id DESC
         LIMIT 10
         `,
@@ -1452,6 +2030,271 @@ export const setupIpcHandlers = () => {
       console.error("Error in customer:getDetails:", err);
       return { success: false, error: err.message || "Failed to load details" };
     }
+  });
+
+  ipcMain.handle("store:updateNotifications", async (_event, payload) => {
+    const db = getDB();
+
+    const {
+      lowStockAlert,
+      emailNotification,
+      whatsappNotification,
+      smsNotification,
+      dailySalesReport,
+    } = payload;
+
+    return new Promise((resolve) => {
+      db.run(
+        `
+      UPDATE notificationSettings
+      SET
+        lowStockAlert = ?,
+        emailNotification = ?,
+        whatsappNotification = ?,
+        smsNotification = ?,
+        dailySalesReport = ?,
+        updatedAt = CURRENT_TIMESTAMP
+      WHERE rowid = (
+        SELECT rowid FROM notificationSettings LIMIT 1
+      )
+      `,
+        [
+          lowStockAlert,
+          emailNotification,
+          whatsappNotification,
+          smsNotification,
+          dailySalesReport,
+        ],
+        function (err) {
+          if (err) {
+            return resolve({ success: false, error: err.message });
+          }
+
+          db.get(`SELECT * FROM notificationSettings LIMIT 1`, (_, row) => {
+            resolve({ success: true, data: row });
+          });
+        }
+      );
+    });
+  });
+
+  ipcMain.handle("store:updatePreference", async (_event, payload) => {
+    const db = getDB();
+
+    const { showDashboardStocks, theme, language, autoBackup } = payload;
+
+    return new Promise((resolve) => {
+      db.run(
+        `
+      UPDATE appPreferences SET
+        showDashboardStocks = COALESCE(?, showDashboardStocks),
+        theme = COALESCE(?, theme),
+        language = COALESCE(?, language),
+        autoBackup = COALESCE(?, autoBackup),
+        updatedAt = CURRENT_TIMESTAMP
+      `,
+        [showDashboardStocks, theme, language, autoBackup],
+        (err) => {
+          if (err) {
+            return resolve({ success: false, error: err.message });
+          }
+
+          db.get(`SELECT * FROM appPreferences LIMIT 1`, (fetchErr, row) => {
+            if (fetchErr) {
+              return resolve({ success: false, error: fetchErr.message });
+            }
+
+            resolve({ success: true, data: row });
+          });
+        }
+      );
+    });
+  });
+
+  ipcMain.handle("store:updateBillingSettings", async (_event, payload) => {
+    const db = getDB();
+
+    const {
+      gstIncludedDefault,
+      defaultGstRate,
+      invoicePrefix,
+      invoiceStartNumber,
+      roundOffBill,
+      showHsnOnInvoice,
+      showCustomerPhone,
+      invoiceFooterNote,
+    } = payload;
+
+    return new Promise((resolve) => {
+      db.run(
+        `
+      UPDATE billingSettings SET
+        gstIncludedDefault = COALESCE(?, gstIncludedDefault),
+        defaultGstRate = COALESCE(?, defaultGstRate),
+        invoicePrefix = COALESCE(?, invoicePrefix),
+        invoiceStartNumber = COALESCE(?, invoiceStartNumber),
+        roundOffBill = COALESCE(?, roundOffBill),
+        showHsnOnInvoice = COALESCE(?, showHsnOnInvoice),
+        showCustomerPhone = COALESCE(?, showCustomerPhone),
+        invoiceFooterNote = COALESCE(?, invoiceFooterNote),
+        updatedAt = CURRENT_TIMESTAMP
+      `,
+        [
+          gstIncludedDefault,
+          defaultGstRate,
+          invoicePrefix,
+          invoiceStartNumber,
+          roundOffBill,
+          showHsnOnInvoice,
+          showCustomerPhone,
+          invoiceFooterNote,
+        ],
+        function (err) {
+          if (err) {
+            return resolve({ success: false, error: err.message });
+          }
+
+          db.get(`SELECT * FROM billingSettings LIMIT 1`, (fetchErr, row) => {
+            if (fetchErr) {
+              return resolve({
+                success: false,
+                error: fetchErr.message,
+              });
+            }
+
+            resolve({ success: true, data: row });
+          });
+        }
+      );
+    });
+  });
+
+  ipcMain.handle("store:updateStoreSettings", async (_event, payload) => {
+    const db = getDB();
+
+    const {
+      storeName,
+      companyName,
+      ownerName,
+      phone,
+      email,
+      address,
+
+      gstEnabled,
+      gstNumber,
+      stateCode,
+
+      currency,
+      financialYear,
+      storeImageUrl,
+    } = payload;
+
+    return new Promise((resolve) => {
+      db.run(
+        `
+      UPDATE storeSettings SET
+        storeName = COALESCE(?, storeName),
+        companyName = COALESCE(?, companyName),
+        ownerName = COALESCE(?, ownerName),
+        phone = COALESCE(?, phone),
+        email = COALESCE(?, email),
+        address = COALESCE(?, address),
+
+        gstEnabled = COALESCE(?, gstEnabled),
+        gstNumber = COALESCE(?, gstNumber),
+        stateCode = COALESCE(?, stateCode),
+
+        currency = COALESCE(?, currency),
+        financialYear = COALESCE(?, financialYear),
+        storeImageUrl = COALESCE(?, storeImageUrl),
+
+        updatedAt = CURRENT_TIMESTAMP
+      `,
+        [
+          storeName,
+          companyName,
+          ownerName,
+          phone,
+          email,
+          address,
+
+          gstEnabled,
+          gstNumber,
+          stateCode,
+
+          currency,
+          financialYear,
+          storeImageUrl,
+        ],
+        function (err) {
+          if (err) {
+            return resolve({ success: false, error: err.message });
+          }
+
+          // 👉 Updated data return
+          db.get(`SELECT * FROM storeSettings LIMIT 1`, (fetchErr, row) => {
+            if (fetchErr) {
+              return resolve({
+                success: false,
+                error: fetchErr.message,
+              });
+            }
+
+            resolve({ success: true, data: row });
+          });
+        }
+      );
+    });
+  });
+
+  ipcMain.handle("store:getStoreSettings", async () => {
+    const db = getDB();
+
+    return new Promise((resolve) => {
+      db.get(`SELECT * FROM storeSettings LIMIT 1`, (err, row) => {
+        if (err) {
+          return resolve({ success: false, error: err.message });
+        }
+
+        if (!row) {
+          db.run(
+            `
+          INSERT INTO storeSettings (
+            storeName,
+            gstEnabled,
+            currency
+          ) VALUES (
+            'My Store', 0, 'INR'
+          )
+        `,
+            function (insertErr) {
+              if (insertErr) {
+                return resolve({
+                  success: false,
+                  error: insertErr.message,
+                });
+              }
+
+              db.get(
+                `SELECT * FROM storeSettings LIMIT 1`,
+                (fetchErr, newRow) => {
+                  if (fetchErr) {
+                    return resolve({
+                      success: false,
+                      error: fetchErr.message,
+                    });
+                  }
+                  resolve({ success: true, data: newRow });
+                }
+              );
+            }
+          );
+          return;
+        }
+
+        resolve({ success: true, data: row });
+      });
+    });
   });
 };
 
@@ -1506,7 +2349,7 @@ function generateInvoiceHTML(
         <strong>Customer:</strong><br/>
         ${inv.customerName || "-"}<br/>
         Phone: ${inv.customerPhone || "-"}<br/>
-        ${inv.billingAddress || ""}
+        ${inv.customerAddress || ""}
       </div>
 
       <div style="text-align:right">

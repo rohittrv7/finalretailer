@@ -1,4 +1,4 @@
-import { app, globalShortcut, BrowserWindow, Menu } from "electron";
+import { app, globalShortcut, BrowserWindow, Menu, ipcMain } from "electron";
 import { initializeDatabase } from "./electron/database/db";
 import { setupIpcHandlers } from "./electron/controller/ipcaHandler";
 import path from "path";
@@ -170,7 +170,7 @@ Menu.setApplicationMenu(menu);
 
 app.whenReady().then(async () => {
   globalShortcut.register("F5", () => {
-    console.log("F5 blocked – ye POS hai, refresh nahi hoga!");
+    console.log("F5 blocked – this is a POS, it won't refresh!");
     return false;
   });
 
@@ -221,6 +221,7 @@ app.whenReady().then(async () => {
   });
   await initializeDatabase();
   setupIpcHandlers();
+
   createWindow();
 });
 

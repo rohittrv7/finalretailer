@@ -112,8 +112,8 @@ export default function CustomTable<T extends { id: string | number }>({
 
   return (
     <div className="w-full space-y-6">
-      <div className="rounded-2xl bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm shadow-lg border border-white/30 overflow-hidden">
-        <table className="w-full border-collapse">
+      <div className="overflow-x-auto thin-scrollbar rounded-2xl cursor-default bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm shadow-lg border border-white/30 overflow-hidden">
+        <table className="w-full border-collapse min-w-max table-auto">
           <thead>
             <tr className="border-b border-gray-200 dark:border-slate-700">
               {columns.map((col) => {

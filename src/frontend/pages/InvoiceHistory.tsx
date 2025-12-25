@@ -187,7 +187,7 @@ export default function InvoiceHistory() {
             <div className="flex items-center gap-4 mb-6">
               <button
                 onClick={() => window.history.back()}
-                className="p-3 bg-white dark:bg-slate-800 rounded-2xl shadow-lg hover:shadow-xl transition-all"
+                className="p-3 bg-white cursor-pointer dark:bg-slate-800 rounded-2xl shadow-lg hover:shadow-xl transition-all"
               >
                 <ArrowLeft className="w-6 h-6" />
               </button>

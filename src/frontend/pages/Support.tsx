@@ -1,5 +1,3 @@
-"use client";
-
 import React, { useState } from "react";
 import {
   MessageCircle,
@@ -12,7 +10,6 @@ import {
   CheckCircle,
   ArrowRight,
   BookOpen,
-  AlertCircle,
 } from "lucide-react";
 import MainLayout from "@/frontend/components/Layout/MainLayout";
 

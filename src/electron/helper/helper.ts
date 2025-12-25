@@ -1,5 +1,5 @@
-import sqlite3 from "sqlite3";
-import fs from "fs";
+// import sqlite3 from "sqlite3";
+// import fs from "fs";
 import crypto from "crypto";
 
 const KEY = crypto.createHash("sha256").update("mysecretkey").digest(); // STORE SAFELY

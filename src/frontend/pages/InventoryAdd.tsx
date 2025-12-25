@@ -13,14 +13,14 @@ import {
   Percent,
   AlertCircle,
   CheckCircle2,
-  Calendar,
   Image as ImageIcon,
   Upload,
 } from "lucide-react";
 import { toast } from "sonner";
 import MainLayout from "../components/Layout/MainLayout";
 import { InventoryItem } from "../types/inventry";
-import { calculateGSTForUnit, generateSKU } from "../helper/helper";
+import { generateRandomBarcode, generateSKU } from "../helper/helper";
+import { BarcodePreview } from "../components/BarcodePreview";
 
 export default function AddProduct() {
   const location = useLocation();
@@ -47,17 +47,17 @@ export default function AddProduct() {
       sellingPrice: 0,
       mrp: 0,
       discount: 0,
-      gstRate: 18,
-      gstType: "CGST_SGST",
-      isGstIncluded: true,
+      gstRate: 0,
+      // gstType: "CGST_SGST",
+      // isGstIncluded: true,
       supplier: "",
       description: "",
-      lowStockAlert: true,
       hsnCode: "",
     },
   });
 
   const navigation = useNavigate();
+  console.log("edit log", editData);
 
   useEffect(() => {
     if (editData) {
@@ -73,10 +73,8 @@ export default function AddProduct() {
     }
   }, [editData, setValue]);
 
-  // local UI state
   const stock = watch("stock") || 0;
   const reorderLevel = watch("reorderLevel") || 0;
-  const lowStockAlert = watch("lowStockAlert");
 
   const [purchaseDate, setPurchaseDate] = useState<string>(
     new Date().toISOString().slice(0, 10)
@@ -88,13 +86,13 @@ export default function AddProduct() {
   const [hsnSuggestions, setHsnSuggestions] = useState<any[]>([]);
   const [hsnSearch, setHsnSearch] = useState<string>("");
   const [selectedHsn, setSelectedHsn] = useState<string>("");
+  const barcodeValue = watch("barcode");
 
   const categories = ["General", "Groceries", "Clothing", "Electronics"];
   const suppliers = ["Default Supplier"];
   const units = ["pcs", "kg", "ltr", "box", "Dozen"];
 
   useEffect(() => {
-    // load store settings (GSTIN) from electron store API
     (async () => {
       try {
         const res = await window.electronAPI.store.get();
@@ -108,7 +106,6 @@ export default function AddProduct() {
     })();
   }, []);
 
-  // HSN search (debounced simple)
   useEffect(() => {
     const t = setTimeout(() => {
       if (!hsnSearch || hsnSearch.length < 3) return setHsnSuggestions([]);
@@ -152,6 +149,68 @@ export default function AddProduct() {
     toast.success(`HSN ${hsn.hsnCode} selected - GST ${rate}%`);
   };
 
+  const handleGenerateBarcode = () => {
+    const newBarcode = generateRandomBarcode(12); // tumhara function
+    setValue("barcode", newBarcode); // ← RHF mein direct set karo
+    toast.success(`Barcode generated: ${newBarcode}`);
+  };
+
+  const handlePrintBarcode = () => {
+    if (!barcode.trim()) {
+      toast.error("First generate a barcode!");
+      return;
+    }
+
+    const printWindow = window.open("", "_blank", "width=600,height=600");
+
+    if (printWindow) {
+      printWindow.document.write(`
+      <html>
+        <head>
+          <title>Print Barcode</title>
+          <style>
+            body { 
+              font-family: Arial, sans-serif; 
+              text-align: center; 
+              padding: 40px; 
+            }
+            .barcode-container {
+              margin: 30px auto;
+              padding: 20px;
+              background: white;
+              border-radius: 10px;
+              box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+              display: inline-block;
+            }
+            .product-info {
+              margin-top: 20px;
+              font-size: 18px;
+            }
+            @media print {
+              body { padding: 10px; }
+              .no-print { display: none; }
+            }
+          </style>
+        </head>
+        <body onload="window.print(); window.close()">
+          <div class="barcode-container">
+            ${svgRef.current?.outerHTML || ""}
+            <div class="product-info">
+              <strong>Product Code:</strong> ${barcode}<br/>
+              <strong>Generated on:</strong> ${new Date().toLocaleDateString(
+                "en-IN"
+              )}
+            </div>
+          </div>
+          <button class="no-print" onclick="window.print()">Print Again</button>
+        </body>
+      </html>
+    `);
+
+      printWindow.document.close();
+    }
+  };
+
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -175,38 +234,21 @@ export default function AddProduct() {
   };
 
   const onSubmit: SubmitHandler<InventoryItem> = async (data) => {
-    // basic client validation
     if (!data.productName || !data.sku || !data.category) {
       return toast.error("Please fill required fields");
     }
 
-    // prepare gst fields and compute taxable/gst if possible
-    const unitSellingPrice = Number(data.sellingPrice) || 0;
     const rate = Number(data.gstRate) || 0;
-    const isIncluded = !!data.isGstIncluded;
-
-    const gstCalc = calculateGSTForUnit(
-      unitSellingPrice,
-      rate,
-      isIncluded,
-      gstVerified
-    );
 
     const finalData = {
       ...data,
       gstRate: rate,
-      gstType: data.gstType ?? "CGST_SGST",
-      isGstIncluded: isIncluded,
-      gstAmount: gstCalc.gstAmount,
-      taxableAmount: gstCalc.taxable,
       imageUrl: imagePreview || data.imageUrl,
-      purchaseDate,
-      expiryDate: expiryDate || undefined,
-      lowStockAlert: !!data.lowStockAlert,
     } as any;
 
     try {
       let result;
+
       if (data.id) {
         result = await window.electronAPI.inventory.update(data.id, finalData);
       } else {
@@ -372,6 +414,18 @@ export default function AddProduct() {
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Barcode (Optional)
                       </label>
+                      <div className="mt-4 mb-1 p-4 bg-white rounded-xl shadow-inner">
+                        {watch("barcode") ? (
+                          <BarcodePreview
+                            value={watch("barcode")}
+                            format="EAN13"
+                          />
+                        ) : (
+                          <p className="text-center text-gray-500 text-sm">
+                            Click "Generate" to create a unique barcode
+                          </p>
+                        )}
+                      </div>
                       <div className="relative">
                         <input
                           type="text"
@@ -381,6 +435,7 @@ export default function AddProduct() {
                         />
                         <button
                           type="button"
+                          onClick={handleGenerateBarcode}
                           className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
                           title="Scan barcode"
                         >
@@ -468,7 +523,7 @@ export default function AddProduct() {
                     </div>
 
                     {/* Low Stock Alert Toggle */}
-                    <label className="flex items-center justify-between cursor-pointer">
+                    {/* <label className="flex items-center justify-between cursor-pointer">
                       <div>
                         <p className="font-medium text-gray-900 dark:text-white">
                           Low Stock Alert
@@ -497,7 +552,7 @@ export default function AddProduct() {
                           />
                         </div>
                       </div>
-                    </label>
+                    </label> */}
                   </div>
                 </div>
 
@@ -725,13 +780,13 @@ export default function AddProduct() {
                               <option value="18">18% (Most Common)</option>
                               <option value="28">28%</option>
                             </select>
-                            <select
+                            {/* <select
                               {...register("gstType")}
                               className="w-full px-5 py-3.5 bg-emerald-50 dark:bg-emerald-900/20 border-2 border-emerald-300 dark:border-emerald-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all font-medium"
                             >
                               <option value="CGST_SGST">CGST + SGST</option>
                               <option value="IGST">IGST</option>
-                            </select>
+                            </select> */}
                             <label className="flex items-center gap-3">
                               <input
                                 type="checkbox"
@@ -767,7 +822,7 @@ export default function AddProduct() {
                 </div>
 
                 {/* Dates - Modern & Premium */}
-                <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-white/30 dark:border-slate-700/50">
+                {/* <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-white/30 dark:border-slate-700/50">
                   <div className="flex items-center gap-4 mb-8">
                     <div className="p-3.5  rounded-2xl shadow-lg">
                       <Calendar className="w-7 h-7 text-white" />
@@ -819,7 +874,7 @@ export default function AddProduct() {
                       </p>
                     </div>
                   </div>
-                </div>
+                </div> */}
 
                 {/* Image & Description */}
                 <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-white/20">

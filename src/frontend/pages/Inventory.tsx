@@ -8,6 +8,8 @@ import {
   TrendingUp,
   Trash2,
   Edit,
+  Receipt,
+  Search,
 } from "lucide-react";
 import MainLayout from "@/frontend/components/Layout/MainLayout";
 import { InventoryItem, InventorySummary } from "@/frontend/types/inventry";
@@ -15,13 +17,13 @@ import CustomTable, { Column } from "../components/CustomTable";
 import DeletePopup from "../components/DeletePopup";
 import { toast } from "sonner";
 import { CartItem } from "../types/cart";
+import useDebouncedSearch from "../hooks/useDebouncedSearch";
 
 export default function Inventory() {
   const navigate = useNavigate();
   const [openDeletePopup, setOpenDeletePopup] = useState(false);
   const [deleteItem, setDeleteItem] = useState<InventoryItem | null>(null);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
-  const [editInventory, setEditInventory] = useState<InventoryItem>();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [state, setState] = useState<InventorySummary>({
     totalItems: 0,
@@ -54,6 +56,24 @@ export default function Inventory() {
         stockValue: result.data.stockValue ?? 0,
       });
     }
+  };
+
+  const [query, setQuery, debouncedQuery] = useDebouncedSearch();
+
+  useEffect(() => {
+    if (debouncedQuery.trim() === "") {
+      console.log("Clear search / show all products");
+      // fetchAllProducts();
+    } else {
+      console.log("Search for:", debouncedQuery);
+      // searchProducts(debouncedQuery);
+    }
+  }, [debouncedQuery]);
+  // const navigate = useNavigate();
+  const handleGenBill = () => {
+    // navigate("/pos");
+    console.log("Navigating to POS / Generating Bill");
+    // Your navigation or bill generation logic
   };
 
   const handleItem = async (row: InventoryItem, key: string) => {
@@ -199,14 +219,14 @@ export default function Inventory() {
               newQuantity: qtyInCart + 1,
             });
           } else {
-            await window.electronAPI.cart.add({
+            const res = await window.electronAPI.cart.add({
               item,
               quantity: 1,
             });
-            toast.success("Added to cart");
+            if (res) toast.success("Added to cart");
           }
-          loadItems();
-          refreshCart();
+          await loadItems();
+          await refreshCart();
         };
 
         const handleDecrement = async () => {
@@ -221,8 +241,8 @@ export default function Inventory() {
               newQuantity: qtyInCart - 1,
             });
           }
-          loadItems();
-          refreshCart();
+          await loadItems();
+          await refreshCart();
         };
 
         return (
@@ -348,7 +368,59 @@ export default function Inventory() {
               );
             })}
           </div>
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-6 w-full">
+            {/* Modern Search Bar */}
+            <div className="relative w-full max-w-lg">
+              <label htmlFor="search-input" className="sr-only">
+                Search products
+              </label>
 
+              {/* Search Icon */}
+              <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
+                <Search className="w-5 h-5 text-gray-400" />
+              </div>
+
+              {/* Input Field - Modern Style */}
+              <input
+                id="search-input"
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search products..."
+                className="w-full pl-12 pr-5 py-3.5 text-base bg-white/80 backdrop-blur-md border border-gray-200 rounded-2xl 
+                 shadow-inner shadow-gray-100 
+                 focus:outline-none focus:ring-4 focus:ring-blue-500/30 focus:border-blue-400 
+                 placeholder:text-gray-400 text-gray-800
+                 transition-all duration-300 ease-out"
+                autoComplete="off"
+              />
+
+              {/* Typing indicator (optional - agar debounce use kar rahe ho) */}
+              {query !== debouncedQuery && (
+                <div className="absolute inset-y-0 right-12 flex items-center">
+                  <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" />
+                </div>
+              )}
+            </div>
+
+            {/* Modern Gen Bill Button */}
+            <button
+              onClick={handleGenBill}
+              className="group relative overflow-hidden flex items-center gap-3 bg-gradient-to-r from-blue-600 to-indigo-600 
+               hover:from-blue-700 hover:to-indigo-700 text-white font-semibold 
+               px-8 py-3.5 rounded-2xl shadow-xl 
+               transform transition-all duration-300 hover:scale-105 hover:shadow-2xl
+               active:scale-95"
+            >
+              <span
+                className="absolute cursor-pointer inset-0 w-full h-full bg-white opacity-0 group-hover:opacity-20 
+                     translate-x-full group-hover:translate-x-0 transition-transform duration-500"
+              ></span>
+
+              <Receipt className="w-6 h-6 group-hover:rotate-12 transition-transform duration-300" />
+              <span className="relative z-10 text-lg">Generate Bill</span>
+            </button>
+          </div>
           <CustomTable
             data={inventory}
             columns={inventoryColumns}

@@ -1,12 +1,9 @@
-"use client";
-
 import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
   Package,
   Users,
-  Truck,
   Settings,
   DollarSign,
   Headphones,
@@ -16,27 +13,62 @@ import {
   Plus,
   List,
   PointerOff,
+  Receipt,
 } from "lucide-react";
 import ThemeToggle from "../ThemeToggle";
+import { useAppSelector } from "../../store/hooks";
 
 const drawerWidth = 240;
 
-const menuItems = [
-  { icon: LayoutDashboard, label: "Dashboard", path: "/" },
-  { icon: PointerOff, label: "Billing (POS)", path: "/pos" },
+// Optional: attach a requiredFeature string to require that entitlement for the menu item to show
+const menuItems: Array<{
+  icon: any;
+  label: string;
+  path: string;
+  children?: any[];
+  requiredFeature?: string;
+}> = [
+  {
+    icon: LayoutDashboard,
+    label: "Dashboard",
+    path: "/",
+    // requiredFeature: "DASHBOARD_SERVICES",
+  },
+  {
+    icon: PointerOff,
+    label: "Billing (POS)",
+    path: "/pos",
+    requiredFeature: "QUICK_BILLING",
+  },
   {
     icon: Package,
     label: "Inventory",
     path: "/inventory",
+    requiredFeature: "INVENTORY_MANAGEMENT",
     children: [
       { icon: Plus, label: "Add Inventory", path: "/inventory/add" },
       { icon: List, label: "Listing", path: "/inventory" },
     ],
   },
-  { icon: Users, label: "Customers", path: "/customers" },
+  {
+    icon: Users,
+    label: "Customers",
+    path: "/customers",
+    requiredFeature: "CUSTOMER_SUPPLIER_MODULES",
+  },
   // { icon: Truck, label: "reports", path: "/reports" },
-  // { icon: Truck, label: "Suppliers", path: "/suppliers" },
-  { icon: Settings, label: "Settings", path: "/settings" },
+  {
+    icon: Receipt,
+    label: "Invoices",
+    path: "/invoice/history",
+    requiredFeature: "INVOICE_LISTING",
+  },
+  {
+    icon: Settings,
+    label: "Settings",
+    path: "/settings",
+    requiredFeature: "SETTING_CHANGES",
+  },
   { icon: DollarSign, label: "Pricing", path: "/pricing" },
   { icon: Headphones, label: "Contact/Support", path: "/support" },
 ];
@@ -47,6 +79,9 @@ export default function Sidebar() {
   const [inventoryOpen, setInventoryOpen] = useState(
     location.pathname.startsWith("/inventory")
   );
+
+  const entitlements = useAppSelector((state) => state.auth.entitlements);
+  console.log("------------", entitlements);
 
   return (
     <>
@@ -75,6 +110,12 @@ export default function Sidebar() {
               const isActive = hasChildren
                 ? location.pathname.startsWith("/inventory")
                 : location.pathname === item.path;
+
+              // check if user has required feature for this menu item
+              const isAllowed =
+                !item.requiredFeature ||
+                entitlements?.features?.includes(item.requiredFeature);
+              if (!isAllowed) return null;
 
               return (
                 <div key={item.path}>

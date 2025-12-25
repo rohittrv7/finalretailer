@@ -11,8 +11,9 @@ import {
   FileText,
   CheckCircle2,
 } from "lucide-react";
-import { CustomerData } from "@/frontend/types/customer";
 import { toast } from "sonner";
+import { CustomerData } from "@/frontend/types/customer";
+import { formatDateTime } from "@/frontend/helper/helper";
 
 interface CustomerDetailsModalProps {
   isOpen: boolean;
@@ -116,13 +117,7 @@ export default function CustomerDetailsModal({
                         <div>
                           <p className="text-xs text-gray-500">Since</p>
                           <p className="text-sm font-medium">
-                            {new Date(
-                              data.customer.created_at
-                            ).toLocaleDateString("en-IN", {
-                              day: "numeric",
-                              month: "short",
-                              year: "numeric",
-                            })}
+                            {formatDateTime(data.customer.createdAt)}
                           </p>
                         </div>
                       </div>
@@ -345,7 +340,7 @@ export default function CustomerDetailsModal({
               className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium text-sm flex items-center gap-2 transition"
             >
               <Copy className="w-4 h-4" />
-              Copy Phone
+              Copy Invoice
             </button>
           </div>
         </div>

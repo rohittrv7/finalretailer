@@ -54,9 +54,7 @@ export default function SaveInvoiceModal({
     "flat" | "percent"
   >("flat");
   const [notes, setNotes] = useState("");
-  const [footerMessage, setFooterMessage] = useState(
-    "Thank you!"
-  );
+  const [footerMessage, setFooterMessage] = useState("Thank you!");
   const [transport, setTransport] = useState({
     vehicleNo: "",
     lrNumber: "",
@@ -218,7 +216,7 @@ export default function SaveInvoiceModal({
       discountValue: invoiceDiscountAmount,
       cashierName: cashierName || null,
       storeId: storeInfo?.id || "1",
-      applyGST: storeInfo?.isGstEnabled === 1 || !!storeInfo?.gstin,
+      applyGST: storeInfo?.isGstEnabled === 1 || !!storeInfo?.gstNumber,
       roundOff: true,
       notes,
       footerMessage,
@@ -229,6 +227,7 @@ export default function SaveInvoiceModal({
 
     // create invoice
     const res = await window.electronAPI.invoice.create(payload);
+
     if (!res?.success) {
       toast.error(res?.error || "Failed to save invoice");
       return;
@@ -236,23 +235,23 @@ export default function SaveInvoiceModal({
     toast.success(`Invoice saved: ${res.invoiceNumber}`);
 
     // // get print HTML
-    const printRes = await window.electronAPI.invoice.print(res.invoiceId);
-    if (printRes?.success && printRes.data) {
-      // you can either open a print window OR send to printer API
-      // here we open a hidden print window in renderer and call window.print()
-      const w = window.open("", "_blank", "width=600,height=800");
-      if (w) {
-        w.document.write(printRes.data);
-        w.document.close();
-        w.focus();
-        setTimeout(() => {
-          w.print();
-          w.close();
-        }, 600);
-      } else {
-        toast.error("Unable to open print window");
-      }
-    }
+    // const printRes = await window.electronAPI.invoice.print(res.invoiceId);
+    // if (printRes?.success && printRes.data) {
+    //   // you can either open a print window OR send to printer API
+    //   // here we open a hidden print window in renderer and call window.print()
+    //   const w = window.open("", "_blank", "width=600,height=800");
+    //   if (w) {
+    //     w.document.write(printRes.data);
+    //     w.document.close();
+    //     w.focus();
+    //     setTimeout(() => {
+    //       w.print();
+    //       w.close();
+    //     }, 600);
+    //   } else {
+    //     toast.error("Unable to open print window");
+    //   }
+    // }
 
     onClose();
   }

@@ -32,7 +32,7 @@
 
   --success: 142 71% 45%;
   --success-foreground: 0 0% 100%;
-  
+
   --warning: 38 92% 50%;
   --warning-foreground: 0 0% 100%;
 
@@ -52,15 +52,23 @@
   --sidebar-ring: 211 100% 50%;
 
   /* Gradients */
-  --gradient-primary: linear-gradient(135deg, hsl(211, 100%, 50%) 0%, hsl(211, 100%, 60%) 100%);
-  --gradient-success: linear-gradient(135deg, hsl(142, 71%, 45%) 0%, hsl(142, 71%, 55%) 100%);
-  
+  --gradient-primary: linear-gradient(
+    135deg,
+    hsl(211, 100%, 50%) 0%,
+    hsl(211, 100%, 60%) 100%
+  );
+  --gradient-success: linear-gradient(
+    135deg,
+    hsl(142, 71%, 45%) 0%,
+    hsl(142, 71%, 55%) 100%
+  );
+
   /* Shadows */
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
   --shadow-primary: 0 4px 14px 0 rgba(33, 150, 243, 0.25);
-  
+
   /* Transitions */
   --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
@@ -101,7 +109,7 @@
   --border: 217 33% 17%;
   --input: 217 33% 17%;
   --ring: 211 100% 50%;
-  
+
   --sidebar: 210 24% 10%;
   --sidebar-foreground: 210 20% 98%;
   --sidebar-primary: 211 100% 50%;
@@ -150,7 +158,7 @@
   --color-chart-3: hsl(var(--chart-3));
   --color-chart-4: hsl(var(--chart-4));
   --color-chart-5: hsl(var(--chart-5));
-  
+
   /* Sidebar Colors */
   --color-sidebar: hsl(var(--sidebar));
   --color-sidebar-foreground: hsl(var(--sidebar-foreground));
@@ -160,18 +168,18 @@
   --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
   --color-sidebar-border: hsl(var(--sidebar-border));
   --color-sidebar-ring: hsl(var(--sidebar-ring));
-  
+
   /* Border Radius */
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
-  
+
   /* Container */
   --container-center: true;
   --container-padding: 2rem;
   --breakpoint-2xl: 1400px;
-  
+
   /* Keyframe Animations */
   @keyframes accordion-down {
     from {
@@ -181,7 +189,7 @@
       height: var(--radix-accordion-content-height);
     }
   }
-  
+
   @keyframes accordion-up {
     from {
       height: var(--radix-accordion-content-height);
@@ -190,7 +198,7 @@
       height: 0;
     }
   }
-  
+
   /* Animation utilities */
   --animate-accordion-down: accordion-down 0.2s ease-out;
   --animate-accordion-up: accordion-up 0.2s ease-out;
@@ -200,12 +208,13 @@
   * {
     @apply border-border outline-ring/50;
   }
-  
+
   body {
     @apply bg-background text-foreground;
     margin: 0px;
     padding: 0px;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+      sans-serif;
   }
 }
 
@@ -215,18 +224,139 @@
   -webkit-app-region: drag;
 }
 
-.app-dragger div, 
+.app-dragger div,
 .app-dragger svg {
   -webkit-app-region: none !important;
 }
 
-/* Hide scrollbar but keep scrolling */
 .scroll-hide::-webkit-scrollbar {
   width: 0px;
   height: 0px;
 }
 
 .scroll-hide {
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE/Edge */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.thin-scrollbar {
+  /* Firefox ke liye */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(116, 116, 255, 0.3) transparent; /* thumb color aur track transparent */
+
+  /* Chrome, Edge, Safari ke liye */
+  &::-webkit-scrollbar {
+    width: 6px; /* vertical scrollbar ki width */
+    height: 6px; /* horizontal scrollbar ki height */
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent; /* track bilkul transparent */
+    border-radius: 10px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: rgba(99, 102, 241, 0.4); /* indigo shade, thoda transparent */
+    border-radius: 10px;
+    border: 2px solid transparent; /* thoda space deta hai, aur bhi thin feel */
+    background-clip: content-box; /* border ke andar color */
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background: rgba(79, 70, 229, 0.7); /* hover pe thoda dark */
+    background-clip: content-box;
+  }
+
+  &::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+}
+
+@layer components {
+  .settings-card {
+    @apply bg-card rounded-2xl border border-border p-6 transition-all duration-300;
+    box-shadow: var(--shadow-soft);
+  }
+
+  .settings-card:hover {
+    box-shadow: var(--shadow-medium);
+  }
+
+  .settings-input {
+    @apply w-full px-4 py-3 bg-secondary/50 border border-border rounded-xl 
+           text-foreground placeholder:text-muted-foreground
+           focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary
+           transition-all duration-200;
+  }
+
+  .settings-label {
+    @apply text-sm font-medium text-foreground mb-2 block;
+  }
+
+  .settings-toggle {
+    @apply w-12 h-6 bg-muted rounded-full relative cursor-pointer transition-colors duration-200
+           peer-checked:bg-primary peer-focus:ring-2 peer-focus:ring-primary/30;
+  }
+
+  .settings-toggle::after {
+    @apply absolute top-1 left-1 w-4 h-4 bg-card rounded-full transition-transform duration-200 shadow-sm;
+    content: "";
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3 
+           bg-primary text-primary-foreground font-semibold rounded-xl
+           hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-primary/30
+           transition-all duration-200 shadow-sm hover:shadow-md;
+  }
+
+  .tab-button {
+    @apply flex items-center gap-2.5 px-5 py-3 font-medium text-muted-foreground
+           rounded-xl transition-all duration-200;
+  }
+
+  .tab-button.active {
+    @apply bg-primary text-primary-foreground shadow-sm;
+  }
+
+  .tab-button:not(.active):hover {
+    @apply bg-secondary text-foreground;
+  }
+
+  .toggle-card {
+    @apply flex items-center justify-between p-4 rounded-xl bg-secondary/30 
+           border border-border/50 hover:border-primary/30 transition-all duration-200;
+  }
+}
+
+@layer utilities {
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.4s ease-out;
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 }

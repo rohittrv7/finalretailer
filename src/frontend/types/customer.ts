@@ -3,7 +3,7 @@ export interface Customer {
   name: string;
   phone: string;
   address: string;
-  created_at: string;
+  createdAt: string;
 }
 
 export interface InvoiceItem {

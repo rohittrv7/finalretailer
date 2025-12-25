@@ -19,12 +19,11 @@ import {
   Package,
   Printer,
   Smartphone,
-  AlertCircle,
   Sparkles,
   Shield,
   ArrowRight,
 } from "lucide-react";
-import { setUser } from "@/frontend/store/slices/userSlice";
+import { setAuthData } from "@/frontend/store/slices/authSlice";
 import { useDispatch } from "react-redux";
 
 const setupSchema = z.object({
@@ -120,7 +119,39 @@ export default function SetupWizard() {
       });
 
       if (result.success && result.user) {
-        dispatch(setUser(result.user));
+        try {
+          const me = await window.electronAPI.auth.getUser();
+          if (me && me.user && me.entitlements) {
+            dispatch(setAuthData({ user: me.user, entitlements: me.entitlements }));
+          } else {
+            dispatch(
+              setAuthData({
+                user: result.user,
+                entitlements: {
+                  plan: "trial",
+                  features: [],
+                  isTrial: true,
+                  trialEndsAt: result.user.trialEndsAt,
+                  licenseKey: null,
+                },
+              })
+            );
+          }
+        } catch (e) {
+          dispatch(
+            setAuthData({
+              user: result.user,
+              entitlements: {
+                plan: "trial",
+                features: [],
+                isTrial: true,
+                trialEndsAt: result.user.trialEndsAt,
+                licenseKey: null,
+              },
+            })
+          );
+        }
+
         toast.success("Store successfully ban gaya!");
         window.location.reload();
       } else {
@@ -134,19 +165,21 @@ export default function SetupWizard() {
   };
 
   return (
-    <div className="min-h-screen flex bg-background">
-      {/* LEFT SIDE - Hero */}
+    <div className="min-h-screen flex bg-background dark:bg-gray-950 text-foreground">
+      {/* Background Pattern - Light mein dikhe, Dark mein na dikhe ya soft */}
       <div
-        className="absolute inset-0 opacity-10"
+        className="absolute inset-0 opacity-10 dark:opacity-5 pointer-events-none"
         style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
         }}
       />
+
+      {/* LEFT SIDE - Hero (Gradient Background) */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
         <div className="relative z-10 p-8 text-white flex flex-col justify-between h-full">
           <div>
             <div className="flex items-center gap-5 mb-5">
-              <div className="w-16 h-16 bg-white/20 backdrop-blur rounded-2xl flex items-center justify-center border border-white/30">
+              <div className="w-16 h-16 bg-blue-500/20 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/30">
                 <Store className="w-10 h-10" />
               </div>
               <div>
@@ -155,42 +188,34 @@ export default function SetupWizard() {
               </div>
             </div>
 
-            <div className="space-y-3 max-w-lg">
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur rounded-full border border-white/20">
+            <div className="space-y-4 max-w-lg">
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-md rounded-full border border-white/20">
                 <Sparkles className="w-4 h-4" />
-                <span className="font-medium">100% Free • Works Offline</span>
+                <span className="font-medium">80% Free • Works Offline</span>
               </div>
 
               <h2 className="text-5xl font-extrabold leading-tight">
                 Run Your Shop
                 <br />
-                <span className="text-white/90">Smarter & Faster</span>
+                <span className="text-blue-500/90">Smarter & Faster</span>
               </h2>
 
               <p className="text-xl text-white/90">
                 10 lakh+ dukaandaaron ka bharosa – roz ka business ab bilkul
                 aasaan
               </p>
-
-              {/* <div className="flex gap-10 mt-8">
-                {stats.map((s, i) => (
-                  <div key={i} className="text-left">
-                    <div className="text-4xl font-bold">{s.value}</div>
-                    <div className="text-white/70">{s.label}</div>
-                  </div>
-                ))}
-              </div> */}
             </div>
           </div>
 
+          {/* Feature Cards */}
           <div className="grid grid-cols-2 gap-4">
             {features.map((f, i) => (
               <div
                 key={i}
-                className="flex items-center gap-4 bg-white/10 backdrop-blur rounded-2xl p-5 border border-white/20 animate-fade-in"
+                className="flex items-center gap-4 bg-blue-500/10 backdrop-blur-md rounded-2xl p-5 border border-white/20"
                 style={{ animationDelay: f.delay }}
               >
-                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                <div className="w-12 h-12 bg-blue-500/20 rounded-xl flex items-center justify-center">
                   <f.icon className="w-7 h-7" />
                 </div>
                 <span className="font-medium text-sm">{f.text}</span>
@@ -201,11 +226,11 @@ export default function SetupWizard() {
       </div>
 
       {/* RIGHT SIDE - Form */}
-      <div className="w-full z-10 lg:w-1/2 flex items-center justify-center p-6">
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 bg-background dark:bg-gray-950">
         <div className="w-full max-w-md">
           {/* Mobile Header */}
           <div className="lg:hidden text-center mb-10">
-            <div className="w-20 h-20 bg-gradient-to-br from-blue-600 to-purple-600 rounded-3xl flex-center mx-auto mb-4 shadow-2xl">
+            <div className="w-20 h-20 bg-gradient-to-br from-blue-600 to-purple-600 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-2xl">
               <Store className="w-11 h-11 text-white" />
             </div>
             <h1 className="text-3xl font-bold text-foreground">Dukaan POS</h1>
@@ -226,15 +251,11 @@ export default function SetupWizard() {
               <input
                 {...register("businessName")}
                 placeholder="Sharma Kirana Store"
-                className={`w-full px-4 py-3.5 rounded-xl border ${
-                  errors.businessName
-                    ? "border-red-500 focus:border-red-500"
-                    : "border-gray-300 dark:border-gray-700 focus:border-blue-500"
-                } bg-white dark:bg-gray-900 text-foreground outline-none transition`}
+                className="w-full px-4 py-3.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-foreground placeholder-muted-foreground focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition"
               />
-              {errors.businessName?.message && (
-                <p className="mt-1.5 text-sm text-red-500 flex items-center gap-1">
-                  {errors.businessName.message as string}
+              {errors.businessName && (
+                <p className="mt-1.5 text-sm text-red-500">
+                  {errors.businessName.message}
                 </p>
               )}
             </div>
@@ -248,17 +269,8 @@ export default function SetupWizard() {
               <input
                 {...register("ownerName")}
                 placeholder="Rahul Kumar"
-                className={`w-full px-4 py-3.5 rounded-xl border ${
-                  errors.ownerName
-                    ? "border-red-500"
-                    : "border-gray-300 dark:border-gray-700 focus:border-blue-500"
-                } bg-white dark:bg-gray-900 text-foreground outline-none transition`}
+                className="w-full px-4 py-3.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-foreground placeholder-muted-foreground focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition"
               />
-              {errors.ownerName?.message && (
-                <p className="mt-1.5 text-sm text-red-500 flex items-center gap-1">
-                  {errors.ownerName.message as string}
-                </p>
-              )}
             </div>
 
             {/* Phone + Email */}
@@ -268,47 +280,29 @@ export default function SetupWizard() {
                   <Phone className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                   Mobile <span className="text-red-500">*</span>
                 </label>
-                <div className="flex">
-                  <span className="inline-flex items-center px-4 rounded-l-xl border border-r-0 border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-sm font-medium">
+                <div className="flex rounded-xl overflow-hidden">
+                  <span className="inline-flex items-center px-4 bg-gray-100 dark:bg-gray-800 border border-r-0 border-gray-300 dark:border-gray-700 text-sm font-medium text-muted-foreground">
                     +91
                   </span>
                   <input
                     {...register("phone")}
                     placeholder="98765 43210"
-                    className={`w-full px-4 py-3.5 rounded-r-xl border-l-0 ${
-                      errors.phone
-                        ? "border-red-500"
-                        : "border-gray-300 dark:border-gray-700 focus:border-blue-500"
-                    } bg-white dark:bg-gray-900 text-foreground outline-none transition`}
+                    className="w-full px-4 py-3.5 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-foreground placeholder-muted-foreground focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition"
                   />
                 </div>
-                {errors.phone?.message && (
-                  <p className="mt-1.5 text-sm text-red-500 flex items-center gap-1">
-                    {errors.phone.message as string}
-                  </p>
-                )}
               </div>
 
               <div>
                 <label className="flex items-center gap-2 text-sm font-medium text-foreground mb-2">
                   <Mail className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                  Email <span className="text-gray-500">(Optional)</span>
+                  Email{" "}
                 </label>
                 <input
                   {...register("email")}
                   type="email"
                   placeholder="you@shop.com"
-                  className={`w-full px-4 py-3.5 rounded-xl border ${
-                    errors.email
-                      ? "border-red-500"
-                      : "border-gray-300 dark:border-gray-700 focus:border-blue-500"
-                  } bg-white dark:bg-gray-900 text-foreground outline-none transition`}
+                  className="w-full px-4 py-3.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-foreground placeholder-muted-foreground focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition"
                 />
-                {errors.email?.message && (
-                  <p className="mt-1.5 text-sm text-red-500 flex items-center gap-1">
-                    {errors.email.message as string}
-                  </p>
-                )}
               </div>
             </div>
 
@@ -322,17 +316,8 @@ export default function SetupWizard() {
                 {...register("password")}
                 type="password"
                 placeholder="Minimum 6 characters"
-                className={`w-full px-4 py-3.5 rounded-xl border ${
-                  errors.password
-                    ? "border-red-500"
-                    : "border-gray-300 dark:border-gray-700 focus:border-blue-500"
-                } bg-white dark:bg-gray-900 text-foreground outline-none transition`}
+                className="w-full px-4 py-3.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-foreground placeholder-muted-foreground focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition"
               />
-              {errors.password?.message && (
-                <p className="mt-1.5 text-sm text-red-500 flex items-center gap-1">
-                  {errors.password.message as string}
-                </p>
-              )}
             </div>
 
             {/* Business Category Dropdown */}
@@ -345,15 +330,13 @@ export default function SetupWizard() {
                 <button
                   type="button"
                   onClick={() => setShowDropdown(!showDropdown)}
-                  className={`w-full px-4 py-3.5 rounded-xl border flex justify-between items-center text-left transition ${
-                    errors.businessCategory
-                      ? "border-red-500"
-                      : "border-gray-300 dark:border-gray-700 hover:border-blue-500"
-                  } bg-white dark:bg-gray-900`}
+                  className="w-full px-4 py-3.5 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-foreground flex justify-between items-center text-left hover:border-blue-500 transition"
                 >
                   <span
                     className={
-                      selectedCategory ? "text-foreground" : "text-gray-500"
+                      selectedCategory
+                        ? "text-foreground"
+                        : "text-muted-foreground"
                     }
                   >
                     {selectedCategory || "Select category"}
@@ -377,7 +360,7 @@ export default function SetupWizard() {
                           });
                           setShowDropdown(false);
                         }}
-                        className={`w-full px-4 py-3 text-left hover:bg-blue-50 dark:hover:bg-gray-800 transition flex items-center gap-3 ${
+                        className={`w-full px-4 py-3 text-left hover:bg-gray-100 dark:hover:bg-gray-800 transition flex items-center gap-3 ${
                           selectedCategory === cat
                             ? "bg-blue-50 dark:bg-gray-800 font-medium"
                             : ""
@@ -396,22 +379,13 @@ export default function SetupWizard() {
                   </div>
                 )}
               </div>
-              {errors.businessCategory?.message && (
-                <p className="mt-1.5 text-sm text-red-500 flex items-center gap-1">
-                  {errors.businessCategory.message as string}
-                </p>
-              )}
             </div>
 
             {/* Submit Button */}
             <button
               type="submit"
               disabled={loading || !isValid}
-              className={`w-full mt-8 py-4 rounded-xl font-bold text-white flex items-center justify-center gap-3 transition-all shadow-xl ${
-                loading || !isValid
-                  ? "bg-gray-500 cursor-not-allowed"
-                  : "bg-blue-500 hover:shadow-2xl active:scale-98"
-              }`}
+              className="w-full mt-8 py-4 rounded-xl font-bold text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center gap-3 transition-all shadow-xl active:scale-98"
             >
               {loading ? (
                 <>
@@ -429,7 +403,7 @@ export default function SetupWizard() {
 
             <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground pt-4">
               <Shield className="w-4 h-4" />
-              <span> Your data is 100% secure & encrypted</span>
+              <span>Your data is 100% secure & encrypted</span>
             </div>
           </form>
         </div>

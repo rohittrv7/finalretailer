@@ -148,3 +148,24 @@ export function formatDateTime(isoString: string): string {
 
   return date.toLocaleDateString("en-GB", options);
 }
+
+// Random unique barcode generate karne ka function
+export const generateRandomBarcode = (length: number = 12): string => {
+  // EAN13 ke liye 13 digits chahiye (last digit check digit hota hai)
+  // Ya CODE128 ke liye flexible – hum 12-13 digits ka bana rahe hain
+  let barcode = "";
+  for (let i = 0; i < length; i++) {
+    barcode += Math.floor(Math.random() * 10);
+  }
+
+  if (length === 12) {
+    let sum = 0;
+    for (let i = 0; i < 12; i++) {
+      sum += parseInt(barcode[i]) * (i % 2 === 0 ? 1 : 3);
+    }
+    const checkDigit = (10 - (sum % 10)) % 10;
+    barcode += checkDigit;
+  }
+
+  return barcode;
+};

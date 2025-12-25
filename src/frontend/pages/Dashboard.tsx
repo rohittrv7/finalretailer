@@ -1,64 +1,104 @@
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { TrendingUp, Receipt, AlertTriangle, Clock, Plus } from "lucide-react";
-import { quickActions, topCategories, topProducts } from "@/frontend/data/data";
+import { TrendingUp, Receipt, AlertTriangle, Plus } from "lucide-react";
+import { quickActions } from "@/frontend/data/data";
 import MainLayout from "@/frontend/components/Layout/MainLayout";
 import SalesOverviewCard from "@/frontend/components/Graph/SalesOverviewCard";
-
-const statsCards = [
-  {
-    title: "Today's Sales",
-    value: "$8,420",
-    change: "+12% vs yesterday",
-    badge: "Live",
-    icon: TrendingUp,
-    color: "blue",
-  },
-  {
-    title: "Profit",
-    value: "$2,310",
-    subtitle: "Margin 27.4%",
-    icon: Receipt,
-    color: "green",
-  },
-  {
-    title: "Orders",
-    value: "156",
-    subtitle: "Avg basket $54",
-    icon: Receipt,
-    color: "yellow",
-  },
-  {
-    title: "Stock Alerts",
-    value: "18 items",
-    subtitle: "5 expiring soon",
-    icon: AlertTriangle,
-    color: "red",
-  },
-];
-
-const lowStockItems = [
-  {
-    name: "Milk 1L",
-    quantity: "3 left",
-    status: "critical",
-    icon: AlertTriangle,
-  },
-  {
-    name: "Yogurt Pack",
-    quantity: "Expiry 5 days",
-    status: "warning",
-    icon: Clock,
-  },
-  {
-    name: "AA Batteries",
-    quantity: "7 left",
-    status: "critical",
-    icon: AlertTriangle,
-  },
-];
+import { ReportData } from "../types/dashboard";
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const [dashboardData, setDashboardData] = useState<null | any>(null);
+  const [salesData, setSalesData] = useState<null | ReportData>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await window.electronAPI.dashboard.getTopLists();
+
+        if (!mounted) return;
+        if (res && res.success) {
+          setSalesData(res.data);
+        }
+      } catch (err) {
+        console.error("Failed to load dashboard data", err);
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await window.electronAPI.dashboard.get();
+
+        if (!mounted) return;
+        if (res && res.success) {
+          setDashboardData(res.data);
+        }
+      } catch (err) {
+        console.error("Failed to load dashboard data", err);
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const stats = [
+    {
+      title: "Today's Sales",
+      value: dashboardData
+        ? `₹${dashboardData.todaySales.toLocaleString()}`
+        : "₹0",
+      change: dashboardData ? undefined : "",
+      badge: dashboardData ? "Live" : undefined,
+      icon: TrendingUp,
+      color: "blue",
+    },
+    {
+      title: "Profit",
+      value: dashboardData
+        ? `₹${dashboardData.todayProfit.toLocaleString()}`
+        : "₹0",
+      subtitle: "Margin",
+      icon: Receipt,
+      color: "green",
+    },
+    {
+      title: "Orders",
+      value: dashboardData ? String(dashboardData.todayOrders) : "0",
+      subtitle: "Avg basket",
+      icon: Receipt,
+      color: "yellow",
+    },
+    {
+      title: "Stock Alerts",
+      value: dashboardData
+        ? `${dashboardData.lowStock.length} items`
+        : "0 items",
+      subtitle: dashboardData
+        ? `${dashboardData.expiring.length} expiring soon`
+        : "",
+      icon: AlertTriangle,
+      color: "red",
+    },
+  ];
+
+  const lowStockItemsFromDb = (dashboardData?.lowStock || []).map(
+    (it: any) => ({
+      name: it.productName,
+      quantity: `${it.stock} left`,
+      status: it.stock <= 2 ? "critical" : "warning",
+      icon: AlertTriangle,
+    })
+  );
 
   return (
     <MainLayout>
@@ -84,16 +124,7 @@ export default function Dashboard() {
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            {statsCards.map((stat, i) => {
-              // const Icon = stat.icon;
-              // const colors = {
-              //   blue: "bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400",
-              //   green:
-              //     "bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400",
-              //   yellow:
-              //     "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400",
-              //   red: "bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400",
-              // };
+            {stats.map((stat, i) => {
               return (
                 <div
                   key={i}
@@ -132,7 +163,7 @@ export default function Dashboard() {
                 Low Stock & Expiry
               </h3>
               <div className="space-y-3">
-                {lowStockItems.map((item, i) => {
+                {lowStockItemsFromDb.map((item, i) => {
                   const Icon = item.icon;
                   return (
                     <div
@@ -175,105 +206,107 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Top Categories */}
-            <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-white/20">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                  Top Categories
-                </h3>
-                <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs font-bold rounded-full">
-                  Revenue
-                </span>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-gray-200 dark:border-slate-700">
-                      <th className="text-left py-2 font-semibold text-blue-600 dark:text-blue-400">
-                        Category
-                      </th>
-                      <th className="text-left py-2 font-semibold text-blue-600 dark:text-blue-400">
-                        Sales
-                      </th>
-                      <th className="text-left py-2 font-semibold text-blue-600 dark:text-blue-400">
-                        Profit
-                      </th>
-                      <th className="text-left py-2 font-semibold text-blue-600 dark:text-blue-400">
-                        Margin
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {topCategories.map((cat, i) => (
-                      <tr
-                        key={i}
-                        className="border-b border-gray-100 dark:border-slate-700"
-                      >
-                        <td className="py-2 font-semibold text-gray-900 dark:text-white">
-                          {cat.category}
-                        </td>
-                        <td className="py-2 text-gray-700 dark:text-gray-300">
-                          {cat.sales}
-                        </td>
-                        <td className="py-2 text-green-600 dark:text-green-400">
-                          {cat.profit}
-                        </td>
-                        <td className="py-2 text-gray-700 dark:text-gray-300">
-                          {cat.margin}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            {salesData && (
+              <>
+                <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-white/20">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                      Top Categories
+                    </h3>
+                    <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs font-bold rounded-full">
+                      Revenue
+                    </span>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-200 dark:border-slate-700">
+                          <th className="text-left py-2 font-semibold text-blue-600 dark:text-blue-400">
+                            Category
+                          </th>
+                          <th className="text-left py-2 font-semibold text-blue-600 dark:text-blue-400">
+                            Sales
+                          </th>
+                          <th className="text-left py-2 font-semibold text-blue-600 dark:text-blue-400">
+                            Profit
+                          </th>
+                          <th className="text-left py-2 font-semibold text-blue-600 dark:text-blue-400">
+                            Margin
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {salesData.categories.map((cat, i) => (
+                          <tr
+                            key={i}
+                            className="border-b border-gray-100 dark:border-slate-700"
+                          >
+                            <td className="py-2 font-semibold text-gray-900 dark:text-white">
+                              {cat.category}
+                            </td>
+                            <td className="py-2 text-gray-700 dark:text-gray-300">
+                              {cat.sales}
+                            </td>
+                            <td className="py-2 text-green-600 dark:text-green-400">
+                              {cat.profit}
+                            </td>
+                            <td className="py-2 text-gray-700 dark:text-gray-300">
+                              {cat.margin}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
 
-            {/* Top Products */}
-            <div className="lg:col-span-2 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-white/20">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                  Top Products
-                </h3>
-                <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs font-bold rounded-full">
-                  Units Sold
-                </span>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-gray-200 dark:border-slate-700">
-                      <th className="text-left py-3 font-semibold text-blue-600 dark:text-blue-400">
-                        Product
-                      </th>
-                      <th className="text-left py-3 font-semibold text-blue-600 dark:text-blue-400">
-                        Units
-                      </th>
-                      <th className="text-left py-3 font-semibold text-blue-600 dark:text-blue-400">
-                        Revenue
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {topProducts.map((product, i) => (
-                      <tr
-                        key={i}
-                        className="border-b border-gray-100 dark:border-slate-700"
-                      >
-                        <td className="py-3 font-semibold text-gray-900 dark:text-white">
-                          {product.product}
-                        </td>
-                        <td className="py-3 text-gray-700 dark:text-gray-300">
-                          {product.units.toLocaleString()}
-                        </td>
-                        <td className="py-3 font-bold text-green-600 dark:text-green-400">
-                          {product.revenue}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+                <div className="lg:col-span-2 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-white/20">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                      Top Products
+                    </h3>
+                    <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs font-bold rounded-full">
+                      Units Sold
+                    </span>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-gray-200 dark:border-slate-700">
+                          <th className="text-left py-3 font-semibold text-blue-600 dark:text-blue-400">
+                            Product
+                          </th>
+                          <th className="text-left py-3 font-semibold text-blue-600 dark:text-blue-400">
+                            Units
+                          </th>
+                          <th className="text-left py-3 font-semibold text-blue-600 dark:text-blue-400">
+                            Revenue
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {salesData.products.map((product, i) => (
+                          <tr
+                            key={i}
+                            className="border-b border-gray-100 dark:border-slate-700"
+                          >
+                            <td className="py-3 font-semibold text-gray-900 dark:text-white">
+                              {product.product}
+                            </td>
+                            <td className="py-3 text-gray-700 dark:text-gray-300">
+                              {product.units.toLocaleString()}
+                            </td>
+                            <td className="py-3 font-bold text-green-600 dark:text-green-400">
+                              {product.revenue}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Quick Actions */}

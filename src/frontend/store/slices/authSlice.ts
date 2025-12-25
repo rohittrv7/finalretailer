@@ -1,54 +1,52 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { UserProfile } from "@/electron/types/user";
+import { Entitlements } from "@/frontend/types/license";
 
-export interface User {
-  id: string;
-  username: string;
-  email: string;
-  role: "user" | "admin" | "moderator";
-  isActive: boolean;
-  isTrial: boolean;
-  trialEndsAt: string | null;
-  isEmailVerified: boolean;
-}
-
-interface AuthState {
-  user: User | null;
-  token: string | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
+export interface AuthState {
+  user: UserProfile | null;
+  entitlements: Entitlements | null;
+  loading: boolean;
+  error: string | null;
 }
 
 const initialState: AuthState = {
   user: null,
-  token: null,
-  isAuthenticated: false,
-  isLoading: true,
+  entitlements: null,
+  loading: true,
+  error: null,
 };
 
 const authSlice = createSlice({
   name: "auth",
   initialState,
   reducers: {
-    setCredentials: (
+    setAuthData: (
       state,
-      action: PayloadAction<{ user: User; token: string }>
+      action: PayloadAction<{ user: UserProfile; entitlements: Entitlements }>
     ) => {
       state.user = action.payload.user;
-      state.token = action.payload.token;
-      state.isAuthenticated = true;
-      state.isLoading = false;
+      state.entitlements = action.payload.entitlements;
+      state.loading = false;
+      state.error = null;
     },
-    logout: (state) => {
+    setAuthLoading: (state, action: PayloadAction<boolean>) => {
+      state.loading = action.payload;
+    },
+    setAuthError: (state, action: PayloadAction<string>) => {
+      state.loading = false;
+      state.error = action.payload;
       state.user = null;
-      state.token = null;
-      state.isAuthenticated = false;
-      state.isLoading = false;
+      state.entitlements = null;
     },
-    setLoading: (state, action: PayloadAction<boolean>) => {
-      state.isLoading = action.payload;
+    clearAuth: (state) => {
+      state.user = null;
+      state.entitlements = null;
+      state.loading = false;
+      state.error = null;
     },
   },
 });
 
-export const { setCredentials, logout, setLoading } = authSlice.actions;
+export const { setAuthData, setAuthLoading, setAuthError, clearAuth } =
+  authSlice.actions;
 export default authSlice.reducer;
