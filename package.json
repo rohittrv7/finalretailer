@@ -40,6 +40,7 @@
   "build": {
     "appId": "com.retailer.app",
     "productName": "RetailerApp",
+    "npmRebuild": false,
     "directories": {
       "output": "release"
     },
