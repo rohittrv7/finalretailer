@@ -13,7 +13,7 @@ interface AddEditProductModalProps {
 }
 
 const COMMON_UNITS = ['pcs', 'kg', 'g', 'litre', 'ml', 'box', 'pack', 'dozen', 'meter']
-const GST_SLABS = [0, 5, 12, 18, 28]
+const GST_SLABS = [0, 5, 18, 40]
 
 export const AddEditProductModal: React.FC<AddEditProductModalProps> = ({
   isOpen,
@@ -33,6 +33,8 @@ export const AddEditProductModal: React.FC<AddEditProductModalProps> = ({
   const [unit, setUnit] = useState<string>('pcs')
   const [hsnCode, setHsnCode] = useState<string>('')
   const [gstRate, setGstRate] = useState<number>(5)
+  const [isCustomGst, setIsCustomGst] = useState<boolean>(false)
+  const [customGstRate, setCustomGstRate] = useState<string>('')
   const [lowStockThreshold, setLowStockThreshold] = useState<string>('5')
   const [expiryDate, setExpiryDate] = useState<string>('')
   const [supplierName, setSupplierName] = useState<string>('')
@@ -74,7 +76,15 @@ export const AddEditProductModal: React.FC<AddEditProductModalProps> = ({
         setStockQty((initialData.stock_qty ?? 0).toString())
         setUnit(initialData.unit || 'pcs')
         setHsnCode(initialData.hsn_code || '')
-        setGstRate(initialData.gst_rate ?? 5)
+        const rate = initialData.gst_rate ?? 5
+        setGstRate(rate)
+        if (GST_SLABS.includes(rate)) {
+          setIsCustomGst(false)
+          setCustomGstRate('')
+        } else {
+          setIsCustomGst(true)
+          setCustomGstRate(rate.toString())
+        }
         setLowStockThreshold((initialData.low_stock_threshold ?? 5).toString())
         setExpiryDate(initialData.expiry_date || '')
         setSupplierName(initialData.supplier_name || '')
@@ -88,6 +98,8 @@ export const AddEditProductModal: React.FC<AddEditProductModalProps> = ({
         setUnit('pcs')
         setHsnCode('')
         setGstRate(5)
+        setIsCustomGst(false)
+        setCustomGstRate('')
         setLowStockThreshold('5')
         setExpiryDate('')
         setSupplierName('')
@@ -405,19 +417,47 @@ export const AddEditProductModal: React.FC<AddEditProductModalProps> = ({
 
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-[#9CA3AF] mb-1">
-                GST Rate (%)
+                GST Rate
               </label>
-              <select
-                value={gstRate}
-                onChange={(e) => setGstRate(Number(e.target.value))}
-                className="w-full h-10 px-2.5 rounded-xl bg-[#0C0E12] border border-[#262B36] text-xs text-[#F3F4F6] focus:outline-none focus:border-amber-500 cursor-pointer"
-              >
-                {GST_SLABS.map((rate) => (
-                  <option key={rate} value={rate}>
-                    {rate}% GST
-                  </option>
-                ))}
-              </select>
+              <div className="flex gap-2">
+                <select
+                  value={isCustomGst ? 'custom' : gstRate}
+                  onChange={(e) => {
+                    if (e.target.value === 'custom') {
+                      setIsCustomGst(true)
+                      setCustomGstRate(gstRate.toString())
+                    } else {
+                      setIsCustomGst(false)
+                      setGstRate(Number(e.target.value))
+                    }
+                  }}
+                  className="w-full h-10 px-2.5 rounded-xl bg-[#0C0E12] border border-[#262B36] text-xs text-[#F3F4F6] focus:outline-none focus:border-amber-500 cursor-pointer"
+                >
+                  <option value={0}>0% (Exempt)</option>
+                  <option value={5}>5% (Essentials)</option>
+                  <option value={18}>18% (Standard)</option>
+                  <option value={40}>40% (Luxury/Demerit)</option>
+                  <option value="custom">Other / Custom</option>
+                </select>
+                {isCustomGst && (
+                  <div className="relative w-24 shrink-0">
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.1"
+                      placeholder="%"
+                      value={customGstRate}
+                      onChange={(e) => {
+                        setCustomGstRate(e.target.value)
+                        setGstRate(parseFloat(e.target.value) || 0)
+                      }}
+                      className="w-full h-10 px-2.5 pr-6 rounded-xl bg-[#0C0E12] border border-amber-500/60 font-mono text-xs text-amber-400 focus:outline-none focus:border-amber-500"
+                    />
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-[#9CA3AF] pointer-events-none">%</span>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div>

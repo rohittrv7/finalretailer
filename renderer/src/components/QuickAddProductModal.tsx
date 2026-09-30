@@ -22,6 +22,8 @@ export const QuickAddProductModal: React.FC<QuickAddProductModalProps> = ({
   const [stockQty, setStockQty] = useState('10')
   const [unit, setUnit] = useState('pcs')
   const [gstRate, setGstRate] = useState<number>(5)
+  const [isCustomGst, setIsCustomGst] = useState<boolean>(false)
+  const [customGstRate, setCustomGstRate] = useState<string>('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -395,25 +397,59 @@ export const QuickAddProductModal: React.FC<QuickAddProductModalProps> = ({
               <label style={{ display: 'block', fontSize: '0.8rem', color: '#D1D5DB', marginBottom: '0.3rem' }}>
                 GST Rate
               </label>
-              <select
-                value={gstRate}
-                onChange={(e) => setGstRate(Number(e.target.value))}
-                style={{
-                  width: '100%',
-                  padding: '0.5rem 0.5rem',
-                  backgroundColor: '#0C0E12',
-                  border: '1px solid #374151',
-                  borderRadius: '8px',
-                  color: '#F9FAFB',
-                  fontSize: '0.875rem',
-                }}
-              >
-                <option value={0}>0%</option>
-                <option value={5}>5%</option>
-                <option value={12}>12%</option>
-                <option value={18}>18%</option>
-                <option value={28}>28%</option>
-              </select>
+              <div style={{ display: 'flex', gap: '0.4rem' }}>
+                <select
+                  value={isCustomGst ? 'custom' : gstRate}
+                  onChange={(e) => {
+                    if (e.target.value === 'custom') {
+                      setIsCustomGst(true)
+                      setCustomGstRate(gstRate.toString())
+                    } else {
+                      setIsCustomGst(false)
+                      setGstRate(Number(e.target.value))
+                    }
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: '0.5rem 0.5rem',
+                    backgroundColor: '#0C0E12',
+                    border: '1px solid #374151',
+                    borderRadius: '8px',
+                    color: '#F9FAFB',
+                    fontSize: '0.875rem',
+                  }}
+                >
+                  <option value={0}>0% (Exempt)</option>
+                  <option value={5}>5% (Essentials)</option>
+                  <option value={18}>18% (Standard)</option>
+                  <option value={40}>40% (Luxury/Demerit)</option>
+                  <option value="custom">Other / Custom</option>
+                </select>
+                {isCustomGst && (
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.1"
+                    placeholder="%"
+                    value={customGstRate}
+                    onChange={(e) => {
+                      setCustomGstRate(e.target.value)
+                      setGstRate(parseFloat(e.target.value) || 0)
+                    }}
+                    style={{
+                      width: '60px',
+                      padding: '0.5rem 0.4rem',
+                      backgroundColor: '#0C0E12',
+                      border: '1px solid #F59E0B',
+                      borderRadius: '8px',
+                      color: '#F59E0B',
+                      fontSize: '0.875rem',
+                      fontWeight: 600,
+                    }}
+                  />
+                )}
+              </div>
             </div>
           </div>
 
