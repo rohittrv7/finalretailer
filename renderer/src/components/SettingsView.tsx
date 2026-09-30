@@ -387,10 +387,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <h3 className="text-sm font-black text-[#F3F4F6] uppercase tracking-wider">
               Local Database Storage
             </h3>
-            <span className="px-2 py-0.5 rounded-full bg-[#1C2028] border border-[#262B36] text-[#9CA3AF] text-[10px] font-mono flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
-              SQLite WAL Active
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-0.5 rounded-full bg-[#1C2028] border border-[#262B36] text-[#9CA3AF] text-[10px] font-mono flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                SQLite WAL Active
+              </span>
+              <span className="px-2 py-0.5 rounded-full bg-[#1C2028] border border-[#262B36] text-[#64748B] text-[10px] font-mono">
+                Ravana Engine
+              </span>
+            </div>
           </div>
 
           <div className="p-3.5 rounded-2xl bg-[#0C0E12] border border-[#262B36] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">

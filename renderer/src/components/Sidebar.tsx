@@ -206,6 +206,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           )}
         </div>
+
+        {/* Discreet Engine & Build Identifier */}
+        {!isCollapsed && (
+          <div className="pt-1 text-center">
+            <span className="text-[10px] font-mono tracking-wider text-slate-500/40 select-none hover:text-slate-400/60 transition-colors">
+              Ravana Core • v1.0.0
+            </span>
+          </div>
+        )}
       </div>
     </aside>
   )
